@@ -238,4 +238,84 @@ describe("MomoClient", () => {
       expect(health.status).toBe("ok");
     });
   });
+
+  describe("upload and uploadFromPath", () => {
+    it("upload constructs multipart request with file field and auth", async () => {
+      const { fetchFn, captured } = mockFetch({
+        status: 200,
+        body: {
+          data: { id: "doc-upload-1", ingestionId: "ing-789" },
+        },
+      });
+
+      const client = new MomoClient({
+        baseUrl: "http://localhost:3000",
+        apiKey: "test-key-upload",
+        fetch: fetchFn,
+      });
+
+      const blob = new Blob(["test file content"], { type: "text/plain" });
+      await client.documents.upload(blob);
+
+      expect(captured.length).toBe(1);
+      expect(captured[0].method).toBe("POST");
+      expect(captured[0].headers.get("Authorization")).toBe(
+        "Bearer test-key-upload",
+      );
+
+      const formData = await captured[0].formData();
+      const fileField = formData.get("file");
+      expect(fileField).toBeTruthy();
+      expect(fileField).toBeInstanceOf(Blob);
+    });
+
+    it("upload includes defaultContainerTag in formData", async () => {
+      const { fetchFn, captured } = mockFetch({
+        status: 200,
+        body: {
+          data: { id: "doc-upload-2", ingestionId: "ing-790" },
+        },
+      });
+
+      const client = new MomoClient({
+        baseUrl: "http://localhost:3000",
+        apiKey: "key",
+        defaultContainerTag: "upload-tag",
+        fetch: fetchFn,
+      });
+
+      const blob = new Blob(["test"], { type: "text/plain" });
+      await client.documents.upload(blob);
+
+      const formData = await captured[0].formData();
+      expect(formData.get("containerTag")).toBe("upload-tag");
+    });
+
+    it("uploadFromPath reads file from disk and sends via multipart", async () => {
+      const { fetchFn, captured } = mockFetch({
+        status: 200,
+        body: {
+          data: { id: "doc-upload-3", ingestionId: "ing-791" },
+        },
+      });
+
+      const client = new MomoClient({
+        baseUrl: "http://localhost:3000",
+        apiKey: "key",
+        fetch: fetchFn,
+      });
+
+      const fixturePath = `${import.meta.dirname}/fixtures/sample.txt`;
+      await client.documents.uploadFromPath(fixturePath);
+
+      expect(captured.length).toBe(1);
+      expect(captured[0].method).toBe("POST");
+
+      const formData = await captured[0].formData();
+      const fileField = formData.get("file");
+      expect(fileField).toBeTruthy();
+      expect(fileField).toBeInstanceOf(File);
+      expect((fileField as File).name).toBe("sample.txt");
+    });
+  });
 });
