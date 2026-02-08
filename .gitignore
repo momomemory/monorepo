@@ -1,0 +1,90 @@
+# Rust
+target/
+**/target/
+**/*.rs.bk
+*.pdb
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# FastEmbed cache
+.fastembed_cache/
+
+# Momo/Sisyphus internals
+.sisyphus/
+
+# Test databases
+test_db_*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test fixtures (if needed, remove if you want to track these)
+tests/fixtures/
+
+# Node.js (for SDKs)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Python (for SDKs)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Go (for SDKs)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dyfile
+
+# Documentation build
+docs/_build/
+docs/.docusaurus/
+
+# Coverage
+coverage/
+*.lcov
+
+# Nix
+result
+result-*
+.direnv/
+.envrc
+
+# Docker volumes
+data/
