@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"bundler","declaration":true,"declarationDir":"./dist","outDir":"./dist","strict":true,"skipLibCheck":true,"esModuleInterop":true,"forceConsistentCasingInFileNames":true},"include":["src"]}
