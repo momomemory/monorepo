@@ -163,6 +163,57 @@ test-sdks:
     # cd sdks/python && pytest
     # cd sdks/go && go test ./...
 
+# ─── TypeScript SDK helpers ─────────────────────────────────────────────────
+
+# Generate TypeScript SDK from live OpenAPI spec
+sdk-ts-codegen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Build the server
+    cargo build -p momo
+
+    # Start server on dedicated port
+    MOMO_HOST=127.0.0.1 MOMO_PORT=3100 MOMO_API_KEYS=test-key \
+      ./target/debug/momo &
+    SERVER_PID=$!
+
+    # Ensure cleanup on exit
+    trap "kill $SERVER_PID 2>/dev/null || true; wait $SERVER_PID 2>/dev/null || true" EXIT
+
+    # Wait for server to be ready (max 30s)
+    echo "Waiting for server..."
+    for i in $(seq 1 30); do
+      if curl -sSf http://127.0.0.1:3100/api/v1/health > /dev/null 2>&1; then
+        echo "Server ready."
+        break
+      fi
+      if [ "$i" -eq 30 ]; then
+        echo "ERROR: Server did not start within 30s"
+        exit 1
+      fi
+      sleep 1
+    done
+
+    # Fetch OpenAPI spec
+    mkdir -p sdks/typescript/openapi
+    curl -sSf http://127.0.0.1:3100/api/v1/openapi.json -o sdks/typescript/openapi/openapi.json
+    echo "OpenAPI spec saved to sdks/typescript/openapi/openapi.json"
+
+    # Run SDK codegen
+    cd sdks/typescript && bun run codegen
+    echo "SDK codegen complete."
+
+
+# Build TypeScript SDK
+sdk-ts-build:
+    cd sdks/typescript && bun run build
+
+
+# Run TypeScript SDK tests
+sdk-ts-test:
+    cd sdks/typescript && bun test
+
 # Publish all SDKs
 publish-sdks:
     @echo "SDK publishing not yet implemented"
