@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:momomemory/momo.git
+	branch = main
+	commit = 8decd0fa6a595dd12249954c61dbc4b7931ca27d
+	parent = af5614dd902175b39b611216f6e12453bafa1228
+	method = merge
+	cmdver = 0.4.9
