@@ -36,9 +36,9 @@ export class GraphGroup {
         params: {
           path: { memoryId },
           query: {
-            depth: query?.depth ?? null,
-            maxNodes: query?.maxNodes ?? null,
-            relationTypes: query?.relationTypes ?? null,
+            depth: query?.depth ?? undefined,
+            maxNodes: query?.maxNodes ?? undefined,
+            relationTypes: query?.relationTypes ?? undefined,
           },
         },
         signal: buildSignal(opts),
@@ -60,7 +60,7 @@ export class GraphGroup {
         params: {
           path: { tag },
           query: {
-            maxNodes: query?.maxNodes ?? null,
+            maxNodes: query?.maxNodes ?? undefined,
           },
         },
         signal: buildSignal(opts),

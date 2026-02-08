@@ -40,13 +40,13 @@ export class SearchGroup {
         ? [this.config.defaultContainerTag]
         : undefined);
     const { data, error } = await this.raw.POST("/api/v1/search", {
-      body: {
+        body: {
         q: body.q,
-        containerTags: containerTags ?? null,
-        limit: body.limit ?? null,
-        threshold: body.threshold ?? null,
+        containerTags: containerTags ?? undefined,
+        limit: body.limit ?? undefined,
+        threshold: body.threshold ?? undefined,
         scope: body.scope,
-        rerank: body.rerank ?? null,
+        rerank: body.rerank ?? undefined,
         include: body.include,
       },
       signal: buildSignal(opts),

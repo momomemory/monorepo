@@ -44,14 +44,14 @@ export class DocumentsGroup {
     const containerTag =
       body.containerTag ?? this.config.defaultContainerTag ?? undefined;
     const { data, error } = await this.raw.POST("/api/v1/documents", {
-      body: {
-        content: body.content,
-        containerTag: containerTag ?? null,
-        contentType: body.contentType ?? null,
-        customId: body.customId ?? null,
-        extractMemories: body.extractMemories ?? null,
-        metadata: (body.metadata ?? {}) as Record<string, never>,
-      },
+        body: {
+          content: body.content,
+          containerTag: containerTag ?? undefined,
+          contentType: body.contentType ?? undefined,
+          customId: body.customId ?? undefined,
+          extractMemories: body.extractMemories ?? undefined,
+          metadata: (body.metadata ?? {}) as Record<string, never>,
+        },
       signal: buildSignal(opts),
       headers: opts?.headers,
     });
@@ -70,11 +70,11 @@ export class DocumentsGroup {
     const containerTag =
       body.containerTag ?? this.config.defaultContainerTag ?? undefined;
     const { data, error } = await this.raw.POST("/api/v1/documents:batch", {
-      body: {
-        documents: body.documents,
-        containerTag: containerTag ?? null,
-        metadata: (body.metadata ?? {}) as Record<string, never>,
-      },
+        body: {
+          documents: body.documents,
+          containerTag: containerTag ?? undefined,
+          metadata: (body.metadata ?? {}) as Record<string, never>,
+        },
       signal: buildSignal(opts),
       headers: opts?.headers,
     });
@@ -168,8 +168,8 @@ export class DocumentsGroup {
       {
         params: { path: { documentId } },
         body: {
-          title: body.title ?? null,
-          containerTags: body.containerTags ?? null,
+          title: body.title ?? undefined,
+          containerTags: body.containerTags ?? undefined,
           metadata: (body.metadata ?? {}) as Record<string, never>,
         },
         signal: buildSignal(opts),
@@ -206,9 +206,9 @@ export class DocumentsGroup {
     const { data, error } = await this.raw.GET("/api/v1/documents", {
       params: {
         query: {
-          containerTags: query?.containerTags ?? null,
-          limit: query?.limit ?? null,
-          cursor: query?.cursor ?? null,
+          containerTags: query?.containerTags ?? undefined,
+          limit: query?.limit ?? undefined,
+          cursor: query?.cursor ?? undefined,
         },
       },
       signal: buildSignal(opts),

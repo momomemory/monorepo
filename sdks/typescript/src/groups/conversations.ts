@@ -41,8 +41,8 @@ export class ConversationsGroup {
         body: {
           messages: body.messages,
           containerTag,
-          sessionId: body.sessionId ?? null,
-          memoryType: body.memoryType ?? null,
+          sessionId: body.sessionId ?? undefined,
+          memoryType: body.memoryType ?? undefined,
         },
         signal: buildSignal(opts),
         headers: opts?.headers,

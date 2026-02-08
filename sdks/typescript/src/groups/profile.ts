@@ -35,13 +35,13 @@ export class ProfileGroup {
     const containerTag =
       body.containerTag ?? this.config.defaultContainerTag ?? body.containerTag;
     const { data, error } = await this.raw.POST("/api/v1/profile:compute", {
-      body: {
+        body: {
         containerTag,
-        q: body.q ?? null,
-        threshold: body.threshold ?? null,
-        limit: body.limit ?? null,
-        includeDynamic: body.includeDynamic ?? null,
-        generateNarrative: body.generateNarrative ?? null,
+        q: body.q ?? undefined,
+        threshold: body.threshold ?? undefined,
+        limit: body.limit ?? undefined,
+        includeDynamic: body.includeDynamic ?? undefined,
+        generateNarrative: body.generateNarrative ?? undefined,
       },
       signal: buildSignal(opts),
       headers: opts?.headers,

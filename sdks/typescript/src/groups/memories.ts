@@ -40,7 +40,7 @@ export class MemoriesGroup {
       body: {
         content: body.content,
         containerTag,
-        memoryType: body.memoryType ?? null,
+          memoryType: body.memoryType ?? undefined,
         metadata: (body.metadata ?? {}) as Record<string, never>,
       },
       signal: buildSignal(opts),
@@ -81,7 +81,7 @@ export class MemoriesGroup {
         params: { path: { memoryId } },
         body: {
           content: body.content,
-          isStatic: body.isStatic ?? null,
+          isStatic: body.isStatic ?? undefined,
           metadata: (body.metadata ?? {}) as Record<string, never>,
         },
         signal: buildSignal(opts),
@@ -108,9 +108,9 @@ export class MemoriesGroup {
     const { data, error } = await this.raw.GET("/api/v1/memories", {
       params: {
         query: {
-          containerTag: containerTag ?? null,
-          limit: query?.limit ?? null,
-          cursor: query?.cursor ?? null,
+          containerTag: containerTag ?? undefined,
+          limit: query?.limit ?? undefined,
+          cursor: query?.cursor ?? undefined,
         },
       },
       signal: buildSignal(opts),
@@ -138,7 +138,7 @@ export class MemoriesGroup {
       body: {
         content: body.content,
         containerTag,
-        reason: body.reason ?? null,
+          reason: body.reason ?? undefined,
       },
       signal: buildSignal(opts),
       headers: opts?.headers,
@@ -157,7 +157,7 @@ export class MemoriesGroup {
       {
         params: { path: { memoryId } },
         body: {
-          reason: body?.reason ?? null,
+          reason: body?.reason ?? undefined,
         },
         signal: buildSignal(opts),
         headers: opts?.headers,
