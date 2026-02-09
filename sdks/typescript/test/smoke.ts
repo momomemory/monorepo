@@ -106,6 +106,7 @@ console.log("\n🔍 Test 5: List documents");
   });
 
   const result = await client.documents.list({
+    containerTags: ["smoke-test"],
     limit: 10,
   });
 
