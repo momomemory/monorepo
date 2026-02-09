@@ -229,29 +229,29 @@ export function writeMomoConfig(
     }
   }
 
-  if (options.baseUrl !== undefined) {
-    existing.baseUrl = options.baseUrl;
-  }
-  if (options.apiKey !== undefined) {
-    existing.apiKey = options.apiKey;
-  }
+  const priorBaseUrl = typeof existing.baseUrl === "string" ? existing.baseUrl : undefined;
+  const priorApiKey = typeof existing.apiKey === "string" ? existing.apiKey : undefined;
+  const priorContainerTagUser =
+    typeof existing.containerTagUser === "string" ? existing.containerTagUser : undefined;
+  const priorContainerTagProject =
+    typeof existing.containerTagProject === "string" ? existing.containerTagProject : undefined;
 
-  if (!existing.baseUrl) {
-    existing.baseUrl = "http://localhost:3000";
-  }
+  const config = {
+    baseUrl: options.baseUrl ?? priorBaseUrl ?? "http://localhost:3000",
+    apiKey: options.apiKey ?? priorApiKey ?? "",
+    containerTagUser: priorContainerTagUser ?? "",
+    containerTagProject: priorContainerTagProject ?? "",
+  };
 
   const lines: string[] = ["{"];
   lines.push("  // Momo server URL");
-  lines.push(`  "baseUrl": ${JSON.stringify(existing.baseUrl)},`);
-  if (existing.apiKey) {
-    lines.push("  // API key for authentication");
-    lines.push(`  "apiKey": ${JSON.stringify(existing.apiKey)}`);
-  } else {
-    const last = lines[lines.length - 1]!;
-    if (last.endsWith(",")) {
-      lines[lines.length - 1] = last.slice(0, -1);
-    }
-  }
+  lines.push(`  "baseUrl": ${JSON.stringify(config.baseUrl)},`);
+  lines.push("  // API key for authentication (leave empty if your server has auth disabled)");
+  lines.push(`  "apiKey": ${JSON.stringify(config.apiKey)},`);
+  lines.push("  // Optional override for user memory container tag (default: auto-derived from username)");
+  lines.push(`  "containerTagUser": ${JSON.stringify(config.containerTagUser)},`);
+  lines.push("  // Optional override for project memory container tag (default: auto-derived from project directory)");
+  lines.push(`  "containerTagProject": ${JSON.stringify(config.containerTagProject)}`);
   lines.push("}");
   lines.push("");
 

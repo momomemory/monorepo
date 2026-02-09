@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import type { PluginInput } from "@opencode-ai/plugin";
 import type { Part, UserMessage } from "@opencode-ai/sdk";
-import { _resetInjectedSessions } from "../index";
 
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -39,7 +38,6 @@ function makeMockCtx(): PluginInput {
 
 describe("chat.message hook", () => {
   beforeEach(() => {
-    _resetInjectedSessions();
     setEnv({
       MOMO_API_KEY: undefined,
       MOMO_BASE_URL: undefined,

@@ -215,6 +215,8 @@ describe("writeMomoConfig", () => {
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
     expect(raw).toContain('"baseUrl": "http://myserver:8080"');
     expect(raw).toContain('"apiKey": "test-key-123"');
+    expect(raw).toContain('"containerTagUser": ""');
+    expect(raw).toContain('"containerTagProject": ""');
   });
 
   it("uses default baseUrl when not provided", () => {
@@ -223,6 +225,8 @@ describe("writeMomoConfig", () => {
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
     expect(raw).toContain('"baseUrl": "http://localhost:3000"');
     expect(raw).toContain('"apiKey": "my-key"');
+    expect(raw).toContain('"containerTagUser": ""');
+    expect(raw).toContain('"containerTagProject": ""');
   });
 
   it("writes valid JSONC that can be parsed after stripping comments", () => {
@@ -236,6 +240,8 @@ describe("writeMomoConfig", () => {
     const parsed = JSON.parse(stripped);
     expect(parsed.baseUrl).toBe("http://localhost:3000");
     expect(parsed.apiKey).toBe("secret");
+    expect(parsed.containerTagUser).toBe("");
+    expect(parsed.containerTagProject).toBe("");
   });
 
   it("updates existing momo.jsonc without losing data", () => {
@@ -250,13 +256,33 @@ describe("writeMomoConfig", () => {
     const parsed = JSON.parse(stripJsoncComments(raw));
     expect(parsed.apiKey).toBe("updated-key");
     expect(parsed.baseUrl).toBe("http://first:1111");
+    expect(parsed.containerTagUser).toBe("");
+    expect(parsed.containerTagProject).toBe("");
   });
 
-  it("omits apiKey field when not provided and no existing value", () => {
+  it("writes all config fields with defaults when values are not provided", () => {
     writeMomoConfig(configDir, { baseUrl: "http://localhost:3000" });
 
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
-    expect(raw).not.toContain('"apiKey"');
     expect(raw).toContain('"baseUrl"');
+    expect(raw).toContain('"apiKey": ""');
+    expect(raw).toContain('"containerTagUser": ""');
+    expect(raw).toContain('"containerTagProject": ""');
+  });
+
+  it("preserves existing container tag overrides", () => {
+    const configPath = join(configDir, "momo.jsonc");
+    writeFileSync(
+      configPath,
+      '{\n  "baseUrl": "http://localhost:3000",\n  "apiKey": "",\n  "containerTagUser": "user-tag",\n  "containerTagProject": "project-tag"\n}\n',
+      "utf-8",
+    );
+
+    writeMomoConfig(configDir, {});
+
+    const raw = readFileSync(configPath, "utf-8");
+    const parsed = JSON.parse(stripJsoncComments(raw));
+    expect(parsed.containerTagUser).toBe("user-tag");
+    expect(parsed.containerTagProject).toBe("project-tag");
   });
 });

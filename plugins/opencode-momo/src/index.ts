@@ -34,11 +34,6 @@ const HELP_TEXT = `**Momo Memory Commands**
 - \`momo({ mode: "forget", memoryId: "mem_abc123" })\`
 `;
 
-/** Reset injected sessions tracking. Visible for testing. */
-export function _resetInjectedSessions(): void {
-  injectedSessions.clear();
-}
-
 export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
   const config = loadConfig();
   const configured = isConfigured();
@@ -172,7 +167,8 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
           });
           if (
             !profile.narrative &&
-            profile.staticFacts.length === 0
+            profile.staticFacts.length === 0 &&
+            profile.dynamicFacts.length === 0
           ) {
             return "No profile data available yet. Add some memories first.";
           }
@@ -183,6 +179,11 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
           if (profile.staticFacts.length > 0) {
             parts.push(
               `**Known Facts:**\n${profile.staticFacts.map((f) => `- ${f.content}`).join("\n")}`,
+            );
+          }
+          if (profile.dynamicFacts.length > 0) {
+            parts.push(
+              `**Recent Signals:**\n${profile.dynamicFacts.map((f) => `- ${f.content}`).join("\n")}`,
             );
           }
           return parts.join("\n\n");
