@@ -12,15 +12,15 @@ default:
 
 # Run the Momo server in development mode
 dev:
-    cargo run -p momo
+    cd momo && cargo run
 
 # Run with debug logging
 dev-debug:
-    RUST_LOG=momo=debug cargo run -p momo
+    cd momo && RUST_LOG=momo=debug cargo run
 
 # Run with trace-level logging
 dev-trace:
-    RUST_LOG=momo=trace cargo run -p momo
+    cd momo && RUST_LOG=momo=trace cargo run
 
 # Watch for changes and restart (requires cargo-watch)
 # watch:
