@@ -1,6 +1,6 @@
 # ─── Momo Monorepo ────────────────────────────────────────────────────────────
 # Task runner for the Momo AI memory system.
-# Cargo workspace root with momo/ as a git-subrepo.
+# Rust server lives in momo/.
 # Run `just` to see all available commands.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -30,75 +30,75 @@ dev-trace:
 
 # Build all workspace members (debug)
 build:
-    cargo build
+    cd momo && cargo build
 
 # Build optimized release binary
 build-release:
-    cargo build --release
+    cd momo && cargo build --release
 
 # Build only the momo server (release)
 build-momo:
-    cargo build -p momo --release
+    cd momo && cargo build --release
 
 # Check code compiles without building
 check:
-    cargo check --all-targets --all-features
+    cd momo && cargo check --all-targets --all-features
 
 # Clean all build artifacts
 clean:
-    cargo clean
+    cd momo && cargo clean
 
 # ─── Test ────────────────────────────────────────────────────────────────────
 
 # Run all workspace tests
 test:
-    cargo test --all-features
+    cd momo && cargo test --all-features
 
 # Run tests for a specific package
 test-package package:
-    cargo test -p {{ package }} --all-features
+    cd momo && cargo test -p {{ package }} --all-features
 
 # Run tests matching a filter
 test-filter filter:
-    cargo test --all-features -- {{ filter }}
+    cd momo && cargo test --all-features -- {{ filter }}
 
 # Run tests with output shown
 test-verbose:
-    cargo test --all-features -- --nocapture
+    cd momo && cargo test --all-features -- --nocapture
 
 # ─── Lint & Format ───────────────────────────────────────────────────────────
 
 # Format all code
 fmt:
-    cargo fmt --all
+    cd momo && cargo fmt --all
 
 # Check formatting without modifying
 fmt-check:
-    cargo fmt --all -- --check
+    cd momo && cargo fmt --all -- --check
 
 # Run clippy linting on all targets
 lint:
-    cargo clippy --all-targets --all-features -- -D warnings
+    cd momo && cargo clippy --all-targets --all-features -- -D warnings
 
 # Run clippy and auto-fix where possible
 lint-fix:
-    cargo clippy --all-targets --all-features --fix --allow-dirty
+    cd momo && cargo clippy --all-targets --all-features --fix --allow-dirty
 
 # ─── Documentation ───────────────────────────────────────────────────────────
 
 # Generate and open documentation
 docs:
-    cargo doc --workspace --no-deps --open
+    cd momo && cargo doc --no-deps --open
 
 # Generate docs without opening
 docs-build:
-    cargo doc --workspace --no-deps
+    cd momo && cargo doc --no-deps
 
 # ─── Database ────────────────────────────────────────────────────────────────
 
 # Run database migrations
 migrate:
-    cargo run -p momo -- migrate
+    cd momo && cargo run -- migrate
 
 # Reset database (DANGER: deletes all data)
 db-reset:
@@ -162,11 +162,11 @@ sdk-ts-codegen:
     set -euo pipefail
 
     # Build the server
-    cargo build -p momo
+    cd momo && cargo build
 
     # Start server on dedicated port
     MOMO_HOST=127.0.0.1 MOMO_PORT=3100 MOMO_API_KEYS=test-key \
-      ./target/debug/momo &
+      ./momo/target/debug/momo &
     SERVER_PID=$!
 
     # Ensure cleanup on exit
@@ -259,11 +259,11 @@ release-sdk-ts version:
 
 # Update workspace dependencies
 update:
-    cargo update
+    cd momo && cargo update
 
 # Run security audit (requires cargo-audit)
 audit:
-    cargo audit
+    cd momo && cargo audit
 
 # ─── CI & Health ─────────────────────────────────────────────────────────────
 
