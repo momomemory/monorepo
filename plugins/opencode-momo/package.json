@@ -30,7 +30,7 @@
   },
   "opencode": {
     "type": "plugin",
-    "hooks": ["chat.message", "event"]
+    "hooks": ["chat.message", "event", "tool"]
   },
   "files": ["dist"]
 }
