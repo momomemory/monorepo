@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:momomemory/sdk-typescript.git
 	branch = main
-	commit = 7e1934cb68e398150e2dd280e5a3d24083d6ce20
+	commit = 88365971bd6a52d5350f9f30b6cc00b3b9e4834b
 	method = merge
 	cmdver = 0.4.9
-	parent = c96935557424e671374a3caea1472486e0a7693c
+	parent = 715a519564afd9055acacf138a54a74fa8f6936b
