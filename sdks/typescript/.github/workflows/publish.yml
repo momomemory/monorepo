@@ -3,7 +3,7 @@ name: Publish TypeScript SDK
 on:
   push:
     tags:
-      - 'sdk-ts/v*'
+      - 'v*'
 
 permissions:
   id-token: write
@@ -12,9 +12,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sdks/typescript
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,7 +19,7 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          TAG=${GITHUB_REF#refs/tags/sdk-ts/v}
+          TAG=${GITHUB_REF#refs/tags/v}
           echo "tag_version=$TAG" >> $GITHUB_OUTPUT
           echo "Extracted version: $TAG"
 
