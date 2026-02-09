@@ -50,10 +50,17 @@ curl -X POST http://localhost:3000/api/v1/search \
 | **Rust** | `momo-sdk` | Coming Soon |
 | **Go** | `momo-go` | Coming Soon |
 
+## Plugins
+
+| Platform | Package | Description |
+|----------|---------|-------------|
+| **OpenCode** | [`@momomemory/opencode-momo`](https://github.com/momomemory/opencode-momo) | Persistent memory for coding agents — context injection, tool modes, event compaction |
+
 ## Repositories
 
 - **[momomemory/momo](https://github.com/momomemory/momo)**: Core server (Rust).
 - **[momomemory/sdk-typescript](https://github.com/momomemory/sdk-typescript)**: Official TypeScript/JavaScript SDK.
+- **[momomemory/opencode-momo](https://github.com/momomemory/opencode-momo)**: OpenCode plugin for persistent agent memory.
 
 ## Credits
 
