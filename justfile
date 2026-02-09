@@ -147,21 +147,12 @@ subrepo-clean name:
 # ─── SDK Development ────────────────────────────────────────────────────────
 
 # Build all SDKs
-build-sdks:
-    @echo "SDK builds not yet implemented"
-    # TypeScript SDK
-    # cd sdks/typescript && npm run build
-    # Python SDK
-    # cd sdks/python && python -m build
-    # Go SDK
-    # cd sdks/go && go build ./...
+build-sdks: sdk-ts-build
+    @echo "All SDK builds complete."
 
 # Test all SDKs
-test-sdks:
-    @echo "SDK tests not yet implemented"
-    # cd sdks/typescript && npm test
-    # cd sdks/python && pytest
-    # cd sdks/go && go test ./...
+test-sdks: sdk-ts-test
+    @echo "All SDK tests complete."
 
 # ─── TypeScript SDK helpers ─────────────────────────────────────────────────
 
@@ -214,12 +205,11 @@ sdk-ts-build:
 sdk-ts-test:
     cd sdks/typescript && bun test
 
-# Publish all SDKs
+# Publish all SDKs (currently TypeScript only)
 publish-sdks:
-    @echo "SDK publishing not yet implemented"
-    # cd sdks/typescript && npm publish
-    # cd sdks/python && twine upload dist/*
-    # cd sdks/go — publish via git tag
+    cd sdks/typescript && npm publish --access public
+    # Python: cd sdks/python && twine upload dist/*
+    # Go: publish via git tag
 
 # ─── Dependencies & Security ────────────────────────────────────────────────
 
