@@ -206,10 +206,54 @@ sdk-ts-test:
     cd sdks/typescript && bun test
 
 # Publish all SDKs (currently TypeScript only)
-publish-sdks:
-    cd sdks/typescript && npm publish --access public
-    # Python: cd sdks/python && twine upload dist/*
-    # Go: publish via git tag
+# NOTE: This wrapper delegates to release-sdk-ts which performs the full
+# release flow (version bump, commit, push, subrepo push, and mirror tag).
+publish-sdks version:
+    @echo "Use 'just release-sdk-ts <version>' to publish the TypeScript SDK."
+    @echo "Example: just release-sdk-ts 0.3.0"
+    @echo "This wrapper exists for backwards compatibility and will not publish directly."
+    
+# Release the TypeScript SDK to the mirror and create a tag on the mirror repo.
+# Usage: just release-sdk-ts 0.3.0
+release-sdk-ts version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "${1:-}" ]; then
+      echo "Usage: just release-sdk-ts <version>  (e.g. just release-sdk-ts 0.3.0)"
+      exit 1
+    fi
+
+    VERSION="$1"
+
+    echo "Bumping sdks/typescript/package.json to $VERSION"
+    cd sdks/typescript
+
+    # Update package.json without creating a git tag
+    npm version "$VERSION" --no-git-tag-version
+
+    # Stage and commit package.json change
+    git add package.json
+    git commit -m "chore(sdk): bump to $VERSION"
+
+    # Push to origin main
+    git push origin main
+
+    # Push subrepo to its upstream (this creates a commit on the subrepo remote)
+    cd ../..
+    echo "Pushing sdks/typescript subrepo upstream"
+    git subrepo push sdks/typescript
+
+    # Ensure any new commits from subrepo push are pushed to origin main
+    git push origin main
+
+    # Create tag on mirror repo using its latest main commit SHA
+    echo "Creating tag v$VERSION on momomemory/sdk-typescript mirror repo"
+    SHA=$(gh api repos/momomemory/sdk-typescript/commits/main --jq '.sha')
+    gh api repos/momomemory/sdk-typescript/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+
+    echo "Release complete. Mirror tag: https://github.com/momomemory/sdk-typescript/releases/tag/v${VERSION}"
+    echo "You can view the mirror actions: https://github.com/momomemory/sdk-typescript/actions"
 
 # ─── Dependencies & Security ────────────────────────────────────────────────
 

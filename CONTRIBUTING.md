@@ -87,6 +87,54 @@ The TypeScript SDK is located at `sdks/typescript/`. It is ESM-only and targets 
 - **Build:** `just sdk-ts-build`
 - **Test:** `just sdk-ts-test`
 
+## Releasing SDKs
+
+SDK releases are handled through the monorepo and synced to standalone mirror repositories. This process is reserved for maintainers.
+
+### Release Flow
+
+1. **Update the version** in the SDK's package manifest (e.g., `sdks/typescript/package.json`).
+2. **Commit the change:**
+   ```bash
+   git commit -m "chore(sdk): bump to X.Y.Z"
+   ```
+3. **Push to the monorepo:**
+   ```bash
+   git push origin main
+   ```
+4. **Sync the mirror repo:**
+   ```bash
+   just subrepo-push sdks/typescript
+   ```
+5. **Tag the mirror repo** to trigger the release workflow:
+   ```bash
+   # Replace <repo> and <version> accordingly
+   SHA=$(gh api repos/momomemory/sdk-typescript/commits/main --jq '.sha')
+   gh api repos/momomemory/sdk-typescript/git/refs -X POST \
+     -f ref="refs/tags/vX.Y.Z" -f sha="$SHA"
+   ```
+
+Alternatively, use the `just` shortcut:
+```bash
+just release-sdk-ts <version>
+```
+
+### How It Works
+
+- **Trusted Publishing:** Each SDK uses GitHub's OIDC Trusted Publishing. No manual tokens or secrets are required in the CI environment.
+- **Validation:** The release workflow validates that the git tag matches the version in `package.json` before publishing.
+- **Provenance:** NPM provenance attestations are automatically attached to the published packages.
+- **Environment:** CI runs on Node 24 to support the latest npm features for Trusted Publishing.
+
+### Setting Up a New SDK Package
+
+1. Create the SDK directory in `sdks/{language}/`.
+2. Create a mirror repository at `github.com/momomemory/sdk-{language}`.
+3. Initialize it as a subrepo: `git subrepo init --remote=... sdks/{language}`.
+4. Perform an initial manual publish to create the package on the registry.
+5. Configure **Trusted Publishing** on the registry (e.g., npmjs.com package settings).
+6. Add a `.github/workflows/publish.yml` to the SDK directory.
+
 ## Docker
 
 We provide a multi-stage Docker build for the core server.
