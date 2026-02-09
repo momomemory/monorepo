@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/sdk",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "TypeScript SDK for Momo — the self-hostable AI memory system",
   "keywords": ["momo", "ai", "memory", "vector-search", "embeddings", "sdk", "typescript"],
   "license": "MIT",
