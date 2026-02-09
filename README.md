@@ -1,76 +1,62 @@
-# Momo Monorepo
+# Momo
 
-This is the monorepo for Momo - a self-hostable AI memory system written in Rust.
+### Self-hostable AI memory for your agents.
 
-## Structure
+> *"You, my friend, are just a few plumbs short of a fruit pie."* — Momo
 
-```
-.
-├── Cargo.toml           # Workspace configuration
-├── justfile             # Task runner commands
-├── momo/                # Core Momo server (Rust)
-│   ├── src/
-│   ├── tests/
-│   └── Cargo.toml
-├── sdks/                # SDKs for various languages
-│   ├── rust/           # Rust SDK (planned)
-│   ├── typescript/     # TypeScript/JavaScript SDK (planned)
-│   ├── python/         # Python SDK (planned)
-│   └── go/             # Go SDK (planned)
-└── docs/               # Documentation
-```
+Momo is a self-hostable AI memory system designed to give agents long-term persistent memory. It is a single Rust binary that uses LibSQL's native vector search, meaning no external vector database like Pinecone or Weaviate is required.
+
+Give your agents a brain that actually remembers.
+
+## Key Features
+
+- **Zero-Config Vector DB**: Native LibSQL vector support — no external dependencies required.
+- **Local AI Pipeline**: Built-in support for local embeddings (FastEmbed) and transcription (Whisper).
+- **Universal Ingestion**: Extract from URLs, PDFs, DOCX, Images (OCR), and Audio/Video out of the box.
+- **Contradiction Management**: Automatically detect and resolve conflicting memories over time.
+- **Memory Graph**: Visualize and traverse relationships between disparate pieces of information.
+- **Multi-Tenant by Design**: Scalable container-based isolation for multi-user applications.
+- **Autonomous Synthesis**: Optional background engine that derives new insights from existing data.
+- **Intelligent Decay**: Relevance scoring that automatically prunes stale or irrelevant memories.
 
 ## Quick Start
 
-### Prerequisites
-
-- **Rust 1.75+** (for building from source)
-- **just** (task runner) - `cargo install just`
-- **Tesseract** (optional — for OCR)
-
-### Development
+The fastest way to get Momo running is via Docker:
 
 ```bash
-# Run the server in development mode
-just dev
-
-# Run with debug logging
-just dev-debug
-
-# Run tests
-just test
-
-# Build release binary
-just build
+docker run -p 3000:3000 -v ./data:/data momomemory/momo
 ```
 
-See `justfile` for all available commands.
+### Add a Memory
+```bash
+curl -X POST http://localhost:3000/api/v1/conversations:ingest \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "I prefer dark mode"}], "containerTag": "user_1"}'
+```
 
-## Workspace Configuration
-
-This is a Cargo workspace. Dependencies are managed centrally in the root `Cargo.toml` and inherited by workspace members.
-
-To add a new workspace member:
-
-1. Create the crate in a subdirectory
-2. Add the path to `[workspace].members` in root `Cargo.toml`
-3. Use `workspace = true` to inherit common dependencies
+### Search Everything
+```bash
+curl -X POST http://localhost:3000/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"q": "What are the user preferences?", "containerTags": ["user_1"], "scope": "hybrid"}'
+```
 
 ## SDKs
 
-SDKs are planned for the following languages:
+| Language | Package | Status |
+|----------|---------|--------|
+| **TypeScript** | [`@momomemory/sdk`](https://github.com/momomemory/sdk-typescript) | Stable |
+| **Python** | `momomemory-sdk` | Coming Soon |
+| **Rust** | `momo-sdk` | Coming Soon |
+| **Go** | `momo-go` | Coming Soon |
 
-- **Rust** - Native SDK for Rust applications
-- **TypeScript/JavaScript** - For Node.js and browser environments
-- **Python** - For Python applications and ML workflows
-- **Go** - For Go applications
+## Repositories
 
-Each SDK will provide a typed client for the Momo API.
+- **[momomemory/momo](https://github.com/momomemory/momo)**: Core server (Rust).
+- **[momomemory/sdk-typescript](https://github.com/momomemory/sdk-typescript)**: Official TypeScript/JavaScript SDK.
 
-## Contributing
+## Credits
 
-See [momo/CONTRIBUTING.md](momo/CONTRIBUTING.md) for contribution guidelines.
+Inspired by [Supermemory](https://supermemory.ai). Named after Momo, Aang's loyal flying lemur companion.
 
-## License
-
-[MIT](momo/LICENSE) © Momo Contributors
+[MIT](LICENSE) © Momo Contributors
