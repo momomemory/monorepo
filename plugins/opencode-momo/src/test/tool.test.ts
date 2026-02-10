@@ -57,6 +57,12 @@ function getMomoTool(hooks: Hooks): ToolDefinition {
   return t;
 }
 
+function getTool(hooks: Hooks, name: string): ToolDefinition {
+  const t = hooks.tool?.[name];
+  if (!t) throw new Error(`${name} tool not found on hooks`);
+  return t;
+}
+
 describe("momo tool", () => {
   beforeEach(() => {
     setEnv({
@@ -85,6 +91,17 @@ describe("momo tool", () => {
       expect(result).toContain("profile");
       expect(result).toContain("list");
       expect(result).toContain("forget");
+    });
+  });
+
+  describe("tool registration", () => {
+    it("registers ingestion-focused tools", async () => {
+      const { MomoPlugin } = await import("../index");
+      const hooks = await MomoPlugin(makeMockCtx());
+
+      expect(getTool(hooks, "momo_ingest")).toBeTruthy();
+      expect(getTool(hooks, "momo_ocr")).toBeTruthy();
+      expect(getTool(hooks, "momo_transcribe")).toBeTruthy();
     });
   });
 

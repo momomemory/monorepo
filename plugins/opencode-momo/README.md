@@ -115,6 +115,14 @@ The `momo` tool supports 6 operational modes:
 - **list**: List recent memories for a given scope.
 - **forget**: Remove a specific memory by its ID.
 
+### Ingestion Tools (RAG Pipeline)
+For richer ingestion than plain `read`, the plugin also exposes dedicated tools that route through Momo's document pipeline:
+- **momo_ingest**: Ingest text, URLs, or local files into documents + retrieval index, with optional memory extraction.
+- **momo_ocr**: Ingest image files, run OCR, and optionally extract memories from recognized text.
+- **momo_transcribe**: Ingest audio/video files, run transcription, and optionally extract memories.
+
+These tools are especially useful with non-vision models: image/audio content is converted into searchable text in Momo.
+
 ### Codebase Indexing
 The `/momo-init` command provides a structured workflow for agents to explore a new codebase and store its architecture, conventions, and key facts into project memory.
 
@@ -137,6 +145,14 @@ Momo supports the `<private>` tag. Any content wrapped in `<private>` tags is au
 
 **Scopes**: `user` (cross-project), `project` (current project, default)  
 **Memory Types**: `fact`, `preference`, `episode`
+
+### Ingestion Tool Arguments (high-level)
+
+| Tool | Required Args | Optional Args |
+|------|--------------|---------------|
+| `momo_ingest` | `input` | `inputType`, `scope`, `extractMemories`, `metadataJson`, `contentType`, `wait`, `timeoutMs`, `pollIntervalMs` |
+| `momo_ocr` | `filePath` | `scope`, `extractMemories`, `contentType`, `wait`, `timeoutMs`, `pollIntervalMs` |
+| `momo_transcribe` | `filePath` | `scope`, `extractMemories`, `contentType`, `wait`, `timeoutMs`, `pollIntervalMs` |
 
 ## Memory Scoping
 
