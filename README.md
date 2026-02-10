@@ -32,6 +32,8 @@ Then open:
 
 - Web console: `http://localhost:3000/`
 - API docs: `http://localhost:3000/api/v1/docs`
+- MCP endpoint: `http://localhost:3000/mcp`
+- MCP guide: [`./momo/docs/mcp.md`](./momo/docs/mcp.md)
 
 ### Add a Memory
 ```bash
@@ -72,4 +74,4 @@ curl -X POST http://localhost:3000/api/v1/search \
 
 Inspired by [Supermemory](https://supermemory.ai). Named after Momo, Aang's loyal flying lemur companion.
 
-[MIT](LICENSE) © Momo Contributors
+[MIT](./momo/LICENSE) © Momo Contributors

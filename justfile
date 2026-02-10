@@ -69,6 +69,16 @@ dev-frontend:
       exit 1
     fi
 
+    # Load backend host/port defaults from momo/.env when present
+    if [ -f momo/.env ]; then
+      # shellcheck disable=SC1091
+      source momo/.env
+    fi
+
+    backend_host="${MOMO_HOST:-127.0.0.1}"
+    backend_port="${MOMO_PORT:-3000}"
+    export VITE_DEV_API_ORIGIN="${VITE_DEV_API_ORIGIN:-http://${backend_host}:${backend_port}}"
+
     cd momo/frontend
     if [ ! -d node_modules ]; then
       bun install
