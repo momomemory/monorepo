@@ -20,6 +20,7 @@ target/
 # Momo/Sisyphus internals
 .sisyphus/
 .codex/
+.agents/
 
 # Test databases
 test_db_*
