@@ -317,5 +317,30 @@ describe("MomoClient", () => {
       expect(fileField).toBeInstanceOf(File);
       expect((fileField as File).name).toBe("sample.txt");
     });
+
+    it("upload includes extractMemories and contentType fields", async () => {
+      const { fetchFn, captured } = mockFetch({
+        status: 200,
+        body: {
+          data: { id: "doc-upload-4", ingestionId: "ing-792" },
+        },
+      });
+
+      const client = new MomoClient({
+        baseUrl: "http://localhost:3000",
+        apiKey: "key",
+        fetch: fetchFn,
+      });
+
+      const blob = new Blob(["audio bytes"], { type: "audio/mpeg" });
+      await client.documents.upload(blob, {
+        extractMemories: true,
+        contentType: "audio/mpeg",
+      });
+
+      const formData = await captured[0].formData();
+      expect(formData.get("extractMemories")).toBe("true");
+      expect(formData.get("contentType")).toBe("audio/mpeg");
+    });
   });
 });

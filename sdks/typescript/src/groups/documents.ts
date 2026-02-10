@@ -84,7 +84,12 @@ export class DocumentsGroup {
 
   async upload(
     file: Blob | File,
-    body?: { containerTag?: string; metadata?: string },
+    body?: {
+      containerTag?: string;
+      metadata?: string;
+      extractMemories?: boolean;
+      contentType?: string;
+    },
     opts?: RequestOptions,
   ): Promise<CreateDocumentResponse> {
     const containerTag =
@@ -94,6 +99,10 @@ export class DocumentsGroup {
     formData.append("file", file);
     if (containerTag) formData.append("containerTag", containerTag);
     if (body?.metadata) formData.append("metadata", body.metadata);
+    if (body?.extractMemories !== undefined) {
+      formData.append("extractMemories", String(body.extractMemories));
+    }
+    if (body?.contentType) formData.append("contentType", body.contentType);
 
     const headers: Record<string, string> = { ...(opts?.headers ?? {}) };
     const apiKey = this.config.getApiKey
@@ -125,7 +134,12 @@ export class DocumentsGroup {
 
   async uploadFromPath(
     filePath: string,
-    body?: { containerTag?: string; metadata?: string },
+    body?: {
+      containerTag?: string;
+      metadata?: string;
+      extractMemories?: boolean;
+      contentType?: string;
+    },
     opts?: RequestOptions,
   ): Promise<CreateDocumentResponse> {
     const fs: { readFile(p: string): Promise<{ buffer: ArrayBuffer }> } =
