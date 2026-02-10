@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/opencode-momo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenCode plugin that gives coding agents persistent memory using Momo",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,14 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
-  "keywords": ["opencode", "plugin", "momo", "memory", "ai", "coding-agent"],
+  "keywords": [
+    "opencode",
+    "plugin",
+    "momo",
+    "memory",
+    "ai",
+    "coding-agent"
+  ],
   "author": "Momo Contributors",
   "license": "MIT",
   "repository": {
@@ -30,7 +37,13 @@
   },
   "opencode": {
     "type": "plugin",
-    "hooks": ["chat.message", "event", "tool"]
+    "hooks": [
+      "chat.message",
+      "event",
+      "tool"
+    ]
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }
