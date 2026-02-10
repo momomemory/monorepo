@@ -156,9 +156,26 @@ Configuration is stored in `~/.config/opencode/momo.jsonc`:
   // Momo server URL
   "baseUrl": "http://localhost:3000",
   // API key for authentication
-  "apiKey": "your-key-here"
+  "apiKey": "your-key-here",
+  // Optional override for user memory container tag
+  "containerTagUser": "",
+  // Optional override for project memory container tag
+  "containerTagProject": ""
 }
 ```
+
+### Project-local config (optional)
+
+You can also place config in your project root as `.momo.jsonc` (preferred) or `momo.jsonc`.
+This is useful when you want a stable `containerTagProject` for a specific repo.
+
+### Config precedence
+
+Highest to lowest precedence:
+1. Environment variables (`MOMO_*`)
+2. Project-local config (`.momo.jsonc` / `momo.jsonc`)
+3. Global config (`~/.config/opencode/momo.jsonc`)
+4. Built-in defaults
 
 ### Environment Variables
 

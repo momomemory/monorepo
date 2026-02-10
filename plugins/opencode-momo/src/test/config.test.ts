@@ -89,11 +89,15 @@ describe("config", () => {
     savedEnv = {
       MOMO_API_KEY: process.env.MOMO_API_KEY,
       MOMO_BASE_URL: process.env.MOMO_BASE_URL,
+      MOMO_CONTAINER_TAG_USER: process.env.MOMO_CONTAINER_TAG_USER,
+      MOMO_CONTAINER_TAG_PROJECT: process.env.MOMO_CONTAINER_TAG_PROJECT,
       XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
     };
 
     delete process.env.MOMO_API_KEY;
     delete process.env.MOMO_BASE_URL;
+    delete process.env.MOMO_CONTAINER_TAG_USER;
+    delete process.env.MOMO_CONTAINER_TAG_PROJECT;
     process.env.XDG_CONFIG_HOME = tempDir;
   });
 
@@ -154,6 +158,54 @@ describe("config", () => {
         const config = loadConfig();
         expect(config.baseUrl).toBe("http://env-url:9090");
         expect(config.apiKey).toBe("env-key");
+      },
+    );
+  });
+
+  it("project-local config overrides global config", () => {
+    writeFileSync(
+      join(tempDir, "opencode", "momo.jsonc"),
+      '{ "baseUrl": "http://global:3000", "containerTagProject": "global-project" }',
+      "utf-8",
+    );
+
+    const projectDir = join(tempDir, "my-project");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, ".momo.jsonc"),
+      '{ "baseUrl": "http://project:4000", "containerTagProject": "project-tag" }',
+      "utf-8",
+    );
+
+    const config = loadConfig(projectDir);
+    expect(config.baseUrl).toBe("http://project:4000");
+    expect(config.containerTagProject).toBe("project-tag");
+  });
+
+  it("env container tag vars override project and global config", () => {
+    writeFileSync(
+      join(tempDir, "opencode", "momo.jsonc"),
+      '{ "containerTagUser": "global-user", "containerTagProject": "global-project" }',
+      "utf-8",
+    );
+
+    const projectDir = join(tempDir, "my-project");
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(
+      join(projectDir, ".momo.jsonc"),
+      '{ "containerTagUser": "project-user", "containerTagProject": "project-tag" }',
+      "utf-8",
+    );
+
+    withEnv(
+      {
+        MOMO_CONTAINER_TAG_USER: "env-user",
+        MOMO_CONTAINER_TAG_PROJECT: "env-project",
+      },
+      () => {
+        const config = loadConfig(projectDir);
+        expect(config.containerTagUser).toBe("env-user");
+        expect(config.containerTagProject).toBe("env-project");
       },
     );
   });

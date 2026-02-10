@@ -35,8 +35,8 @@ const HELP_TEXT = `**Momo Memory Commands**
 `;
 
 export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
-  const config = loadConfig();
-  const configured = isConfigured();
+  const config = loadConfig(ctx.directory);
+  const configured = isConfigured(ctx.directory);
 
   // Initialize Momo client if configured
   let momo: MomoClient | undefined;
@@ -55,7 +55,7 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
   function requireMomo(): MomoClient {
     if (!momo) {
       throw new Error(
-        "Momo is not configured. Set MOMO_API_KEY environment variable or create ~/.config/opencode/momo.jsonc",
+        "Momo is not configured. Set MOMO_API_KEY or configure ~/.config/opencode/momo.jsonc (or project-local .momo.jsonc).",
       );
     }
     return momo;

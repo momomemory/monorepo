@@ -77,6 +77,8 @@ bunx @momomemory/opencode-momo configure
 Or set environment variables:
 - \`MOMO_BASE_URL\` - Momo server URL (default: http://localhost:3000)
 - \`MOMO_API_KEY\` - API key for authentication
+- \`MOMO_CONTAINER_TAG_USER\` - Optional user container tag override
+- \`MOMO_CONTAINER_TAG_PROJECT\` - Optional project container tag override
 
 After configuration, restart OpenCode to activate.
 `;
@@ -381,7 +383,7 @@ export function writeMomoConfig(
   };
 
   const lines: string[] = ["{"];
-  lines.push("  // Momo server URL");
+  lines.push("  // Momo server URL (default: http://localhost:3000)");
   lines.push(`  "baseUrl": ${JSON.stringify(config.baseUrl)},`);
   lines.push("  // API key for authentication (leave empty if your server has auth disabled)");
   lines.push(`  "apiKey": ${JSON.stringify(config.apiKey)},`);
@@ -389,6 +391,8 @@ export function writeMomoConfig(
   lines.push(`  "containerTagUser": ${JSON.stringify(config.containerTagUser)},`);
   lines.push("  // Optional override for project memory container tag (default: auto-derived from project directory)");
   lines.push(`  "containerTagProject": ${JSON.stringify(config.containerTagProject)}`);
+  lines.push("  // Note: project-local config files (.momo.jsonc / momo.jsonc) override this global file,");
+  lines.push("  // and MOMO_* environment variables override both.");
   lines.push("}");
   lines.push("");
 
@@ -431,6 +435,15 @@ async function runInstall(flags: Record<string, string | boolean>): Promise<void
   writeCommandFiles(configDir);
   console.log(`  ✓ Created ${join(configDir, "command", "momo-init.md")}`);
   console.log(`  ✓ Created ${join(configDir, "command", "momo-configure.md")}`);
+
+  const momoConfigPath = join(configDir, "momo.jsonc");
+  const hadMomoConfig = existsSync(momoConfigPath);
+  writeMomoConfig(configDir, {});
+  if (hadMomoConfig) {
+    console.log(`  ✓ Updated ${momoConfigPath}`);
+  } else {
+    console.log(`  ✓ Created ${momoConfigPath}`);
+  }
 
   console.log(`
 ✅ Installation complete!
@@ -484,7 +497,7 @@ async function runConfigure(flags: Record<string, string | boolean>): Promise<vo
 // ─── CLI Entry ───
 
 function printHelp(): void {
-  console.log(`opencode-momo v0.1.2
+  console.log(`opencode-momo v0.1.3
 
 OpenCode plugin that gives coding agents persistent memory using Momo.
 
