@@ -19,6 +19,7 @@ target/
 
 # Momo/Sisyphus internals
 .sisyphus/
+.codex/
 
 # Test databases
 test_db_*
