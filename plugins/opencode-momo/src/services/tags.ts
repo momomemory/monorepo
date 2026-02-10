@@ -1,4 +1,5 @@
 import os from "node:os";
+import { basename } from "node:path";
 
 export function simpleHash(input: string): string {
   // djb2-like hash, deterministic and simple
@@ -17,7 +18,10 @@ export function userTag(): string {
 
 export function projectTag(directory: string): string {
   const dir = directory || ".";
-  return `opencode-project-${simpleHash(dir)}`;
+  const projectName = basename(dir.replace(/[\\/]+$/, ""));
+  const slug = slugify(projectName) || "project";
+  const hash = shortHash(dir);
+  return `ocp-${slug}-${hash}`;
 }
 
 export function getTags(directory: string): { user: string; project: string } {
@@ -32,6 +36,18 @@ export function getTagsWithOverrides(
   if (overrides?.containerTagUser) tags.user = overrides.containerTagUser;
   if (overrides?.containerTagProject) tags.project = overrides.containerTagProject;
   return tags;
+}
+
+function shortHash(input: string): string {
+  return simpleHash(input).padStart(8, "0").slice(-8);
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
 export default { getTags, getTagsWithOverrides, userTag, projectTag };

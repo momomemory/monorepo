@@ -27,12 +27,18 @@ describe("tags service", () => {
     const a = projectTag(dir);
     const b = projectTag(dir);
     expect(a).toBe(b);
+    expect(a).toMatch(/^ocp-myproject-[a-f0-9]{8}$/);
   });
 
   it("different directories produce different projectTags", () => {
     const a = projectTag("/tmp/one");
     const b = projectTag("/tmp/two");
     expect(a).not.toBe(b);
+  });
+
+  it("projectTag uses a readable sanitized project name", () => {
+    const tag = projectTag("/tmp/My Cool.Project!!!");
+    expect(tag).toMatch(/^ocp-my-cool-project-[a-f0-9]{8}$/);
   });
 
   it("overrides bypass hashing for user", () => {

@@ -142,10 +142,10 @@ Momo supports the `<private>` tag. Any content wrapped in `<private>` tags is au
 
 Memories are isolated using container tags derived from your environment:
 
-| Scope | Description | Tag Derivation (djb2) |
+| Scope | Description | Tag Derivation |
 |-------|-------------|-----------------------|
 | **user** | Personal facts and preferences shared across all projects | `opencode-user-{hash(username)}` |
-| **project** | Codebase-specific knowledge | `opencode-project-{hash(directory)}` |
+| **project** | Codebase-specific knowledge | `ocp-{slug(projectName)}-{hash(directory)}` |
 
 ## Configuration
 
