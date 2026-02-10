@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/opencode-momo",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OpenCode plugin that gives coding agents persistent memory using Momo",
   "type": "module",
   "main": "dist/index.js",

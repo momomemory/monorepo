@@ -347,7 +347,7 @@ async function runConfigure(flags: Record<string, string | boolean>): Promise<vo
 // ─── CLI Entry ───
 
 function printHelp(): void {
-  console.log(`opencode-momo v0.1.1
+  console.log(`opencode-momo v0.1.2
 
 OpenCode plugin that gives coding agents persistent memory using Momo.
 
