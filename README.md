@@ -63,12 +63,14 @@ curl -X POST http://localhost:3000/api/v1/search \
 | Platform | Package | Description |
 |----------|---------|-------------|
 | **OpenCode** | [`@momomemory/opencode-momo`](https://github.com/momomemory/opencode-momo) | Persistent memory for coding agents — context injection, tool modes, event compaction |
+| **OpenClaw** | [`@momomemory/openclaw-momo`](https://github.com/momomemory/openclaw-momo) | Persistent memory for OpenClaw — auto-recall, auto-capture, slash commands, and memory tools |
 
 ## Repositories
 
 - **[momomemory/momo](https://github.com/momomemory/momo)**: Core server (Rust).
 - **[momomemory/sdk-typescript](https://github.com/momomemory/sdk-typescript)**: Official TypeScript/JavaScript SDK.
 - **[momomemory/opencode-momo](https://github.com/momomemory/opencode-momo)**: OpenCode plugin for persistent agent memory.
+- **[momomemory/openclaw-momo](https://github.com/momomemory/openclaw-momo)**: OpenClaw plugin for persistent agent memory.
 
 ## Credits
 

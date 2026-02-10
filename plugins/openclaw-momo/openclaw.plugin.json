@@ -1,0 +1,70 @@
+{
+  "id": "openclaw-momo",
+  "kind": "memory",
+  "uiHints": {
+    "baseUrl": {
+      "label": "Momo Base URL",
+      "placeholder": "http://localhost:3000",
+      "help": "Base URL for your Momo server (or use ${MOMO_OPENCLAW_BASE_URL}/${MOMO_BASE_URL})"
+    },
+    "apiKey": {
+      "label": "Momo API Key",
+      "sensitive": true,
+      "placeholder": "momo_...",
+      "help": "Optional API key (or use ${MOMO_OPENCLAW_API_KEY}/${MOMO_API_KEY})",
+      "advanced": true
+    },
+    "containerTag": {
+      "label": "Container Tag",
+      "placeholder": "openclaw_myhostname",
+      "help": "Memory namespace. Default: openclaw_{hostname}. All channels share this.",
+      "advanced": true
+    },
+    "autoRecall": {
+      "label": "Auto-Recall",
+      "help": "Inject relevant memories + user profile before every AI turn"
+    },
+    "autoCapture": {
+      "label": "Auto-Capture",
+      "help": "Automatically store important conversation turns"
+    },
+    "maxRecallResults": {
+      "label": "Max Recall Results",
+      "placeholder": "10",
+      "help": "Maximum memories injected into context per turn",
+      "advanced": true
+    },
+    "profileFrequency": {
+      "label": "Profile Injection Frequency",
+      "placeholder": "50",
+      "help": "Inject full profile every N turns. Search results are injected every turn.",
+      "advanced": true
+    },
+    "captureMode": {
+      "label": "Capture Mode",
+      "help": "'all' (default) filters short text + injected context; 'everything' captures all text",
+      "advanced": true
+    },
+    "debug": {
+      "label": "Debug Logging",
+      "help": "Enable verbose debug logs for API calls and responses",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": { "type": "string" },
+      "apiKey": { "type": "string" },
+      "containerTag": { "type": "string" },
+      "autoRecall": { "type": "boolean" },
+      "autoCapture": { "type": "boolean" },
+      "maxRecallResults": { "type": "number", "minimum": 1, "maximum": 20 },
+      "profileFrequency": { "type": "number", "minimum": 1, "maximum": 500 },
+      "captureMode": { "type": "string", "enum": ["everything", "all"] },
+      "debug": { "type": "boolean" }
+    },
+    "required": []
+  }
+}
