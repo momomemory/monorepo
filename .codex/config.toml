@@ -1,6 +1,0 @@
-[mcp_servers.momo]
-url = "http://localhost:7638/mcp"
-
-[mcp_servers.momo.http_headers]
-Authorization = "Bearer 45n5iswQgb-rq1YPJQ6qg7a0kLbVZ6Vu"
-X-Sm-Project = "momo"
