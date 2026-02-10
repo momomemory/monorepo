@@ -72,6 +72,35 @@ async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatSearchContent(result: {
+  type: "memory" | "document";
+  content?: string | null;
+  title?: string | null;
+  summary?: string | null;
+  chunks?: Array<{ content: string }>;
+  memoryId?: string;
+  documentId?: string;
+}): string {
+  if (result.type === "memory") {
+    if (result.content?.trim()) return result.content;
+    return result.memoryId ? `[memory:${result.memoryId}]` : "(empty memory)";
+  }
+
+  const fromContent = result.content?.trim();
+  if (fromContent) return fromContent;
+
+  const fromChunk = result.chunks?.find((c) => c.content?.trim())?.content;
+  if (fromChunk) return fromChunk;
+
+  const fromTitle = result.title?.trim();
+  if (fromTitle) return fromTitle;
+
+  const fromSummary = result.summary?.trim();
+  if (fromSummary) return fromSummary;
+
+  return result.documentId ? `[document:${result.documentId}]` : "(empty document match)";
+}
+
 export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
   const config = loadConfig(ctx.directory);
   const configured = isConfigured(ctx.directory);
@@ -111,10 +140,33 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
     pollIntervalMs: number,
   ): Promise<{ status: string; title?: string; documentId?: string }> {
     const start = Date.now();
+    let transientErrors = 0;
     while (Date.now() - start < timeoutMs) {
-      const status = await client.documents.getIngestionStatus(ingestionId, {
-        timeoutMs,
-      });
+      let status;
+      try {
+        status = await client.documents.getIngestionStatus(ingestionId, {
+          timeoutMs,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        const isTransient =
+          message.includes("database is locked") ||
+          message.includes("internal error") ||
+          message.includes("timeout") ||
+          message.includes("503") ||
+          message.includes("502");
+
+        if (!isTransient) throw error;
+
+        transientErrors += 1;
+        if (transientErrors > 5) {
+          throw error;
+        }
+
+        await delay(pollIntervalMs);
+        continue;
+      }
+
       if (status.status === "completed" || status.status === "failed") {
         return {
           status: status.status,
@@ -286,19 +338,24 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
             containerTags,
             limit: args.limit ?? 10,
             scope: "hybrid",
+            include: {
+              documents: true,
+              chunks: true,
+            },
           });
           if (!results.results || results.results.length === 0) {
-            return "No memories found matching your query.";
+            return "No results found matching your query.";
           }
           const formatted = results.results
             .map((r, i) => {
               const relevance =
                 r.type === "memory" ? r.similarity : r.score;
               const scoreStr = ` (score: ${relevance.toFixed(2)})`;
-              return `${i + 1}. ${r.content ?? "(no content)"}${scoreStr}`;
+              const content = formatSearchContent(r);
+              return `${i + 1}. ${content}${scoreStr}`;
             })
             .join("\n");
-          return `Found ${results.results.length} memories:\n\n${formatted}`;
+          return `Found ${results.results.length} results:\n\n${formatted}`;
         }
 
         case "profile": {
