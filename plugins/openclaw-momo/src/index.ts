@@ -37,14 +37,21 @@ export default {
     registerForgetTool(api, client, cfg);
     registerProfileTool(api, client, cfg);
 
+    const handleBeforeAgentStart = (
+      event: Record<string, unknown>,
+      context: Record<string, unknown>,
+      handler: (event: Record<string, unknown>) => unknown,
+    ) => {
+      if (context?.sessionKey) {
+        sessionKey = String(context.sessionKey);
+      }
+      return handler(event);
+    };
+
     if (cfg.autoRecall) {
       const recallHandler = buildRecallHandler(client, cfg);
-      api.on(
-        "before_agent_start",
-        (event: Record<string, unknown>, ctx: Record<string, unknown>) => {
-          if (ctx?.sessionKey) sessionKey = String(ctx.sessionKey);
-          return recallHandler(event);
-        },
+      api.on("before_agent_start", (event: Record<string, unknown>, ctx: Record<string, unknown>) =>
+        handleBeforeAgentStart(event, ctx, recallHandler),
       );
     }
 

@@ -3,71 +3,82 @@ import type { MomoOpenClawClient } from "../client";
 import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 
+function formatSimilarity(score?: number): string {
+  if (typeof score !== "number") return "";
+  return ` (${Math.round(score * 100)}%)`;
+}
+
+function printProfile(profile: {
+  narrative?: string;
+  static: string[];
+  dynamic: string[];
+}): void {
+  if (profile.narrative) {
+    console.log("Summary:");
+    console.log(`  ${profile.narrative}`);
+  }
+
+  if (profile.static.length > 0) {
+    console.log("Stable Facts:");
+    for (const item of profile.static) console.log(`  - ${item}`);
+  }
+
+  if (profile.dynamic.length > 0) {
+    console.log("Recent Signals:");
+    for (const item of profile.dynamic) console.log(`  - ${item}`);
+  }
+}
+
 export function registerCli(
   api: OpenClawPluginApi,
   client: MomoOpenClawClient,
   _cfg: MomoOpenClawConfig,
 ): void {
   api.registerCli(
-    // openclaw SDK does not currently ship strict CLI program types.
+    // OpenClaw CLI "program" type is not exported yet.
     ({ program }: { program: any }) => {
-      const cmd = program.command("momo").description("Momo long-term memory commands");
+      const momo = program
+        .command("momo")
+        .description("Momo memory helper commands");
 
-      cmd
+      momo
         .command("search")
-        .argument("<query>", "Search query")
-        .option("--limit <n>", "Max results", "5")
-        .action(async (query: string, opts: { limit: string }) => {
-          const limit = Number.parseInt(opts.limit, 10) || 5;
-          log.debug(`cli search: query=${query} limit=${limit}`);
+        .argument("<query>", "Query to search for")
+        .option("--limit <n>", "Max rows", "5")
+        .action(async (query: string, options: { limit: string }) => {
+          const limit = Number.parseInt(options.limit, 10) || 5;
+          const rows = await client.search(query, limit);
 
-          const results = await client.search(query, limit);
-          if (results.length === 0) {
+          if (rows.length === 0) {
             console.log("No memories found.");
             return;
           }
 
-          for (const row of results) {
-            const score = row.similarity
-              ? ` (${(row.similarity * 100).toFixed(0)}%)`
-              : "";
-            console.log(`- ${row.content}${score}`);
+          for (const row of rows) {
+            console.log(`- ${row.content}${formatSimilarity(row.similarity)}`);
           }
         });
 
-      cmd
+      momo
         .command("profile")
-        .option("--query <q>", "Optional query to focus profile retrieval")
-        .action(async (opts: { query?: string }) => {
-          log.debug(`cli profile: query=${opts.query ?? "(none)"}`);
+        .option("--query <q>", "Optional profile focus query")
+        .action(async (options: { query?: string }) => {
+          log.debug(`cli profile query=${options.query ?? "(none)"}`);
+          const profile = await client.getProfile(options.query);
 
-          const profile = await client.getProfile(opts.query);
-          if (profile.static.length === 0 && profile.dynamic.length === 0) {
-            console.log("No profile information available yet.");
+          if (!profile.narrative && profile.static.length === 0 && profile.dynamic.length === 0) {
+            console.log("No profile data available yet.");
             return;
           }
 
-          if (profile.narrative) {
-            console.log("Summary:");
-            console.log(`  ${profile.narrative}`);
-          }
-
-          if (profile.static.length > 0) {
-            console.log("Stable Facts:");
-            for (const fact of profile.static) console.log(`  - ${fact}`);
-          }
-
-          if (profile.dynamic.length > 0) {
-            console.log("Recent Context:");
-            for (const fact of profile.dynamic) console.log(`  - ${fact}`);
-          }
+          printProfile(profile);
         });
 
-      cmd
+      momo
         .command("wipe")
-        .description("Delete ALL memories for this container tag")
+        .description("Forget every memory in the current container")
         .action(async () => {
-          const tag = client.getContainerTag();
+          const containerTag = client.getContainerTag();
           const readline = await import("node:readline");
           const rl = readline.createInterface({
             input: process.stdin,
@@ -76,20 +87,19 @@ export function registerCli(
 
           const answer = await new Promise<string>((resolve) => {
             rl.question(
-              `This will permanently delete all memories in \"${tag}\". Type \"yes\" to confirm: `,
+              `Delete all memories for \"${containerTag}\"? Type yes to continue: `,
               resolve,
             );
           });
           rl.close();
 
           if (answer.trim().toLowerCase() !== "yes") {
-            console.log("Aborted.");
+            console.log("Canceled.");
             return;
           }
 
-          log.debug(`cli wipe: container=${tag}`);
-          const result = await client.wipeAllMemories();
-          console.log(`Wiped ${result.deletedCount} memories from \"${tag}\".`);
+          const { deletedCount } = await client.wipeAllMemories();
+          console.log(`Deleted ${deletedCount} memories from ${containerTag}.`);
         });
     },
     { commands: ["momo"] },

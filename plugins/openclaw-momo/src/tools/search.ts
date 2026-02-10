@@ -4,6 +4,17 @@ import type { MomoOpenClawClient } from "../client";
 import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 
+function renderRows(rows: Array<{ content: string; similarity?: number }>): string {
+  return rows
+    .map((row, index) => {
+      const score = typeof row.similarity === "number"
+        ? ` (${Math.round(row.similarity * 100)}%)`
+        : "";
+      return `${index + 1}. ${row.content}${score}`;
+    })
+    .join("\n");
+}
+
 export function registerSearchTool(
   api: OpenClawPluginApi,
   client: MomoOpenClawClient,
@@ -13,47 +24,33 @@ export function registerSearchTool(
     {
       name: "momo_search",
       label: "Memory Search",
-      description: "Search through long-term memories for relevant information.",
+      description: "Find memory entries relevant to a query.",
       parameters: Type.Object({
-        query: Type.String({ description: "Search query" }),
-        limit: Type.Optional(Type.Number({ description: "Max results (default: 5)" })),
+        query: Type.String({ description: "Search text" }),
+        limit: Type.Optional(Type.Number({ description: "Maximum number of results" })),
       }),
-      async execute(
-        _toolCallId: string,
-        params: { query: string; limit?: number },
-      ) {
-        const limit = params.limit ?? 5;
-        log.debug(`search tool: query=${params.query} limit=${limit}`);
+      async execute(_toolCallId: string, params: { query: string; limit?: number }) {
+        const limit = typeof params.limit === "number" ? params.limit : 5;
+        log.debug(`tool momo_search query=${params.query} limit=${limit}`);
 
-        const results = await client.search(params.query, limit);
-
-        if (results.length === 0) {
+        const rows = await client.search(params.query, limit);
+        if (rows.length === 0) {
           return {
-            content: [{ type: "text" as const, text: "No relevant memories found." }],
+            content: [{ type: "text" as const, text: "No memory matches found." }],
           };
         }
-
-        const text = results
-          .map((row, idx) => {
-            const score = row.similarity
-              ? ` (${(row.similarity * 100).toFixed(0)}%)`
-              : "";
-            return `${idx + 1}. ${row.content}${score}`;
-          })
-          .join("\n");
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Found ${results.length} memories:\n\n${text}`,
+              text: `Found ${rows.length} matching memories:\n\n${renderRows(rows)}`,
             },
           ],
           details: {
-            count: results.length,
-            memories: results.map((row) => ({
+            count: rows.length,
+            rows: rows.map((row) => ({
               id: row.id,
-              content: row.content,
               similarity: row.similarity,
             })),
           },

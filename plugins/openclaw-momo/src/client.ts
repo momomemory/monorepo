@@ -21,6 +21,13 @@ export type ProfileResult = {
   searchResults: ProfileSearchResult[];
 };
 
+type AddMemoryInput = {
+  content: string;
+  memoryType: V1MemoryType;
+  metadata?: Record<string, string | number | boolean>;
+  customId?: string;
+};
+
 type ConversationRole = "user" | "assistant";
 
 function limitText(text: string, max: number): string {
@@ -52,12 +59,8 @@ export class MomoOpenClawClient {
     log.info(`connected to ${baseUrl} (container: ${containerTag})`);
   }
 
-  async addMemory(
-    content: string,
-    memoryType: V1MemoryType,
-    metadata?: Record<string, string | number | boolean>,
-    customId?: string,
-  ): Promise<{ id: string }> {
+  async addMemory(input: AddMemoryInput): Promise<{ id: string }> {
+    const { content, memoryType, metadata, customId } = input;
     const payloadMetadata: Record<string, unknown> = {
       ...(metadata ?? {}),
     };

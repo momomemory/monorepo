@@ -142,49 +142,186 @@ async function promptInput(question: string, defaultValue?: string): Promise<str
 export function registerPluginInConfig(configDir: string): boolean {
   const configPath = join(configDir, "opencode.jsonc");
 
-  if (existsSync(configPath)) {
-    const content = readFileSync(configPath, "utf-8");
-
-    if (content.includes(PLUGIN_NAME)) {
-      return false;
-    }
-
-    if (content.includes('"plugin"')) {
-      const newContent = content.replace(
-        /("plugin"\s*:\s*\[)([^\]]*?)(\])/,
-        (_match: string, start: string, middle: string, end: string) => {
-          const trimmed = middle.trim();
-          if (trimmed === "") {
-            return `${start}\n    "${PLUGIN_NAME}"\n  ${end}`;
-          }
-          return `${start}${middle.trimEnd()},\n    "${PLUGIN_NAME}"\n  ${end}`;
-        },
-      );
-      writeFileSync(configPath, newContent, "utf-8");
-      return true;
-    }
-
-    const beforeBrace = content.trimEnd().slice(0, -1).trimEnd();
-    if (beforeBrace.endsWith(",") || beforeBrace.endsWith("{")) {
-      const insertContent = content.replace(
-        /\}\s*$/,
-        `  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n}`,
-      );
-      writeFileSync(configPath, insertContent, "utf-8");
-    } else {
-      const withComma = content.replace(
-        /(\S)\s*\}\s*$/,
-        `$1,\n  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n}`,
-      );
-      writeFileSync(configPath, withComma, "utf-8");
-    }
+  if (!existsSync(configPath)) {
+    mkdirSync(configDir, { recursive: true });
+    const newConfig = `{\n  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n}\n`;
+    writeFileSync(configPath, newConfig, "utf-8");
     return true;
   }
 
-  mkdirSync(configDir, { recursive: true });
-  const newConfig = `{\n  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n}\n`;
-  writeFileSync(configPath, newConfig, "utf-8");
+  const content = readFileSync(configPath, "utf-8");
+  if (content.includes(PLUGIN_NAME)) {
+    return false;
+  }
+
+  const pluginArrayStart = findPluginArrayStart(content);
+  if (pluginArrayStart !== -1) {
+    const pluginArrayEnd = findMatchingBracket(content, pluginArrayStart);
+    if (pluginArrayEnd !== -1) {
+      const before = content.slice(0, pluginArrayStart + 1);
+      const middle = content.slice(pluginArrayStart + 1, pluginArrayEnd);
+      const after = content.slice(pluginArrayEnd);
+
+      const middleTrimmed = middle.trim();
+      const appended = middleTrimmed.length === 0
+        ? `\n    "${PLUGIN_NAME}"\n  `
+        : `${middle.replace(/\s*$/, "")},\n    "${PLUGIN_NAME}"\n  `;
+
+      writeFileSync(configPath, `${before}${appended}${after}`, "utf-8");
+      return true;
+    }
+  }
+
+  const rootClose = findRootObjectClose(content);
+  if (rootClose === -1) {
+    // Fallback: recreate minimal config when file is malformed.
+    const rebuilt = `{\n  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n}\n`;
+    writeFileSync(configPath, rebuilt, "utf-8");
+    return true;
+  }
+
+  const head = content.slice(0, rootClose).replace(/\s*$/, "");
+  const needsComma = !head.endsWith("{") && !head.endsWith(",");
+  const insertion = `${needsComma ? "," : ""}\n  "plugin": [\n    "${PLUGIN_NAME}"\n  ]\n`;
+  const tail = content.slice(rootClose);
+  writeFileSync(configPath, `${head}${insertion}${tail}`, "utf-8");
   return true;
+}
+
+function findPluginArrayStart(content: string): number {
+  const keyMatch = /"plugin"\s*:/.exec(content);
+  if (!keyMatch) return -1;
+
+  const start = keyMatch.index + keyMatch[0].length;
+  for (let i = start; i < content.length; i++) {
+    const ch = content[i];
+    if (!ch || /\s/.test(ch)) continue;
+    return ch === "[" ? i : -1;
+  }
+
+  return -1;
+}
+
+function findMatchingBracket(content: string, openIndex: number): number {
+  let depth = 0;
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let i = openIndex; i < content.length; i++) {
+    const ch = content[i]!;
+    const next = content[i + 1];
+
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "/" && next === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    if (ch === "[") {
+      depth++;
+      continue;
+    }
+
+    if (ch === "]") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+
+  return -1;
+}
+
+function findRootObjectClose(content: string): number {
+  let depth = 0;
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let rootClose = -1;
+
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i]!;
+    const next = content[i + 1];
+
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "/" && next === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth++;
+      continue;
+    }
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) rootClose = i;
+    }
+  }
+
+  return rootClose;
 }
 
 /**

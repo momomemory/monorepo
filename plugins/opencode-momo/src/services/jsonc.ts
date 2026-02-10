@@ -1,80 +1,87 @@
 /**
- * Strips comments from JSONC content while respecting string boundaries.
- * Handles // and /* comments, URLs in strings, and escaped quotes.
- * Also removes trailing commas to support more relaxed JSONC format.
+ * Remove JSONC comments and trailing commas.
+ *
+ * This parser is intentionally lightweight and keeps string literals intact,
+ * including escaped quotes and URLs.
  */
-export function stripJsoncComments(content: string): string {
-  let result = "";
-  let i = 0;
-  let inString = false;
-  let inSingleLineComment = false;
-  let inMultiLineComment = false;
+export function stripJsoncComments(input: string): string {
+  enum Mode {
+    Code,
+    String,
+    LineComment,
+    BlockComment,
+  }
 
-  while (i < content.length) {
-    const char = content[i];
-    const nextChar = content[i + 1];
+  const out: string[] = [];
+  let mode = Mode.Code;
 
-    if (!inSingleLineComment && !inMultiLineComment) {
-      if (char === '"') {
-        let backslashCount = 0;
-        let j = i - 1;
-        while (j >= 0 && content[j] === "\\") {
-          backslashCount++;
-          j--;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i]!;
+    const next = input[i + 1];
+
+    if (mode === Mode.String) {
+      out.push(ch);
+
+      if (ch === "\\") {
+        // Keep escape + escaped char together.
+        if (next !== undefined) {
+          out.push(next);
+          i++;
         }
-        if (backslashCount % 2 === 0) {
-          inString = !inString;
-        }
-        result += char;
+        continue;
+      }
+
+      if (ch === '"') {
+        mode = Mode.Code;
+      }
+
+      continue;
+    }
+
+    if (mode === Mode.LineComment) {
+      if (ch === "\n") {
+        mode = Mode.Code;
+        out.push("\n");
+      }
+      continue;
+    }
+
+    if (mode === Mode.BlockComment) {
+      if (ch === "*" && next === "/") {
+        mode = Mode.Code;
         i++;
         continue;
       }
+
+      if (ch === "\n") {
+        out.push("\n");
+      }
+
+      continue;
     }
 
-    if (inString) {
-      result += char;
+    // Mode.Code
+    if (ch === '"') {
+      mode = Mode.String;
+      out.push(ch);
+      continue;
+    }
+
+    if (ch === "/" && next === "/") {
+      mode = Mode.LineComment;
       i++;
       continue;
     }
 
-    if (!inSingleLineComment && !inMultiLineComment) {
-      if (char === "/" && nextChar === "/") {
-        inSingleLineComment = true;
-        i += 2;
-        continue;
-      }
-      if (char === "/" && nextChar === "*") {
-        inMultiLineComment = true;
-        i += 2;
-        continue;
-      }
-    }
-
-    if (inSingleLineComment) {
-      if (char === "\n") {
-        inSingleLineComment = false;
-        result += char;
-      }
+    if (ch === "/" && next === "*") {
+      mode = Mode.BlockComment;
       i++;
       continue;
     }
 
-    if (inMultiLineComment) {
-      if (char === "*" && nextChar === "/") {
-        inMultiLineComment = false;
-        i += 2;
-        continue;
-      }
-      if (char === "\n") {
-        result += char;
-      }
-      i++;
-      continue;
-    }
-
-    result += char;
-    i++;
+    out.push(ch);
   }
 
-  return result.replace(/,\s*([}\]])/g, "$1");
+  // Remove trailing commas before object/array close.
+  return out.join("").replace(/,\s*([}\]])/g, "$1");
 }

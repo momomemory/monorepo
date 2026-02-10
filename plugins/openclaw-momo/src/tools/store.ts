@@ -5,11 +5,15 @@ import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 import { buildDocumentId, detectCategory, toMemoryType } from "../memory";
 
-const memoryTypeSchema = Type.Union([
+const memoryTypeParam = Type.Union([
   Type.Literal("fact"),
   Type.Literal("preference"),
   Type.Literal("episode"),
 ]);
+
+function shortText(value: string, limit = 80): string {
+  return value.length > limit ? `${value.slice(0, limit)}...` : value;
+}
 
 export function registerStoreTool(
   api: OpenClawPluginApi,
@@ -20,35 +24,39 @@ export function registerStoreTool(
   api.registerTool(
     {
       name: "momo_store",
-      label: "Memory Store",
-      description: "Save important information to long-term memory.",
+      label: "Store Memory",
+      description: "Write an explicit memory item to Momo.",
       parameters: Type.Object({
-        text: Type.String({ description: "Information to remember" }),
-        memoryType: Type.Optional(memoryTypeSchema),
+        text: Type.String({ description: "Memory content" }),
+        memoryType: Type.Optional(memoryTypeParam),
       }),
       async execute(
         _toolCallId: string,
         params: { text: string; memoryType?: "fact" | "preference" | "episode" },
       ) {
-        const inferredCategory = detectCategory(params.text);
-        const memoryType = params.memoryType ?? toMemoryType(inferredCategory);
-
+        const detected = detectCategory(params.text);
+        const memoryType = params.memoryType ?? toMemoryType(detected);
         const sessionKey = getSessionKey();
-        const customId = sessionKey ? buildDocumentId(sessionKey) : undefined;
 
-        log.debug(`store tool: memoryType=${memoryType} customId=${customId}`);
-
-        await client.addMemory(
-          params.text,
+        await client.addMemory({
+          content: params.text,
           memoryType,
-          { source: "openclaw_tool", category: inferredCategory },
-          customId,
-        );
+          metadata: {
+            source: "openclaw_tool",
+            category: detected,
+          },
+          customId: sessionKey ? buildDocumentId(sessionKey) : undefined,
+        });
 
-        const preview = params.text.length > 80 ? `${params.text.slice(0, 80)}...` : params.text;
+        log.debug(`tool momo_store type=${memoryType}`);
 
         return {
-          content: [{ type: "text" as const, text: `Stored: \"${preview}\"` }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Stored memory: \"${shortText(params.text)}\"`,
+            },
+          ],
         };
       },
     },

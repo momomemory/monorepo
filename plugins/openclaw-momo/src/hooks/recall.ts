@@ -2,163 +2,149 @@ import type { ProfileSearchResult, MomoOpenClawClient } from "../client";
 import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 
-function formatRelativeTime(isoTimestamp: string): string {
-  try {
-    const dt = new Date(isoTimestamp);
-    const now = new Date();
-    const seconds = (now.getTime() - dt.getTime()) / 1000;
-    const minutes = seconds / 60;
-    const hours = seconds / 3600;
-    const days = seconds / 86400;
+type RecallItem = {
+  value: string;
+  updatedAt?: string;
+  similarity?: number;
+};
 
-    if (minutes < 30) return "just now";
-    if (minutes < 60) return `${Math.floor(minutes)}mins ago`;
-    if (hours < 24) return `${Math.floor(hours)} hrs ago`;
-    if (days < 7) return `${Math.floor(days)}d ago`;
+function humanizeTime(iso: string): string {
+  const timestamp = Date.parse(iso);
+  if (!Number.isFinite(timestamp)) return "";
 
-    const month = dt.toLocaleString("en", { month: "short" });
-    if (dt.getFullYear() === now.getFullYear()) {
-      return `${dt.getDate()} ${month}`;
-    }
+  const deltaMs = Date.now() - timestamp;
+  const minutes = Math.floor(deltaMs / 60_000);
+  const hours = Math.floor(deltaMs / 3_600_000);
+  const days = Math.floor(deltaMs / 86_400_000);
 
-    return `${dt.getDate()} ${month}, ${dt.getFullYear()}`;
-  } catch {
-    return "";
-  }
+  if (minutes < 30) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
 }
 
-function deduplicateMemories(
-  staticFacts: string[],
-  dynamicFacts: string[],
-  searchResults: ProfileSearchResult[],
-): {
-  static: string[];
-  dynamic: string[];
-  searchResults: ProfileSearchResult[];
-} {
+function mergeDeduped(...groups: RecallItem[][]): RecallItem[] {
   const seen = new Set<string>();
+  const merged: RecallItem[] = [];
 
-  const uniqueStatic = staticFacts.filter((memory) => {
-    if (seen.has(memory)) return false;
-    seen.add(memory);
-    return true;
-  });
+  for (const group of groups) {
+    for (const item of group) {
+      const key = item.value.trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+  }
 
-  const uniqueDynamic = dynamicFacts.filter((memory) => {
-    if (seen.has(memory)) return false;
-    seen.add(memory);
-    return true;
-  });
-
-  const uniqueSearch = searchResults.filter((row) => {
-    const memory = row.memory ?? "";
-    if (!memory || seen.has(memory)) return false;
-    seen.add(memory);
-    return true;
-  });
-
-  return {
-    static: uniqueStatic,
-    dynamic: uniqueDynamic,
-    searchResults: uniqueSearch,
-  };
+  return merged;
 }
 
-function formatContext(
-  staticFacts: string[],
-  dynamicFacts: string[],
-  searchResults: ProfileSearchResult[],
-  maxResults: number,
-): string | null {
-  const deduped = deduplicateMemories(staticFacts, dynamicFacts, searchResults);
-  const statics = deduped.static.slice(0, maxResults);
-  const dynamics = deduped.dynamic.slice(0, maxResults);
-  const search = deduped.searchResults.slice(0, maxResults);
+function toSearchItems(rows: ProfileSearchResult[]): RecallItem[] {
+  return rows
+    .map((row) => ({
+      value: row.memory ?? "",
+      updatedAt: row.updatedAt,
+      similarity: row.similarity,
+    }))
+    .filter((row) => row.value.length > 0);
+}
 
-  if (statics.length === 0 && dynamics.length === 0 && search.length === 0) {
-    return null;
-  }
+function asFacts(values: string[]): RecallItem[] {
+  return values.map((value) => ({ value }));
+}
+
+function shouldIncludeProfile(turnCount: number, frequency: number): boolean {
+  if (turnCount <= 1) return true;
+  return turnCount % frequency === 0;
+}
+
+function buildContextEnvelope(
+  profileFacts: RecallItem[],
+  recentFacts: RecallItem[],
+  relevantFacts: RecallItem[],
+  limit: number,
+): string | null {
+  const merged = mergeDeduped(profileFacts, recentFacts, relevantFacts);
+  if (merged.length === 0) return null;
+
+  const profileSection = profileFacts
+    .slice(0, limit)
+    .map((item) => `- ${item.value}`)
+    .join("\n");
+
+  const recentSection = recentFacts
+    .slice(0, limit)
+    .map((item) => `- ${item.value}`)
+    .join("\n");
+
+  const relevantSection = relevantFacts
+    .slice(0, limit)
+    .map((item) => {
+      const pct = typeof item.similarity === "number" ? ` ${Math.round(item.similarity * 100)}%` : "";
+      const age = item.updatedAt ? ` (${humanizeTime(item.updatedAt)})` : "";
+      return `- ${item.value}${pct}${age}`;
+    })
+    .join("\n");
 
   const sections: string[] = [];
+  if (profileSection) sections.push(`## Long-term Profile\n${profileSection}`);
+  if (recentSection) sections.push(`## Recent Signals\n${recentSection}`);
+  if (relevantSection) sections.push(`## Relevant Matches\n${relevantSection}`);
 
-  if (statics.length > 0) {
-    sections.push(
-      "## User Profile (Persistent)\n" +
-        statics.map((fact) => `- ${fact}`).join("\n"),
-    );
-  }
+  if (sections.length === 0) return null;
 
-  if (dynamics.length > 0) {
-    sections.push(
-      `## Recent Context\n${dynamics.map((fact) => `- ${fact}`).join("\n")}`,
-    );
-  }
-
-  if (search.length > 0) {
-    const lines = search.map((row) => {
-      const memory = row.memory ?? "";
-      const timeStr = row.updatedAt ? formatRelativeTime(row.updatedAt) : "";
-      const pct = row.similarity != null ? `[${Math.round(row.similarity * 100)}%]` : "";
-      const prefix = timeStr ? `[${timeStr}]` : "";
-      return `- ${prefix}${memory} ${pct}`.trim();
-    });
-
-    sections.push(`## Relevant Memories\n${lines.join("\n")}`);
-  }
-
-  const intro =
-    "The following is recalled context about the user. Reference it only when relevant to the conversation.";
-  const disclaimer =
-    "Use these memories naturally when relevant, but do not force them into every response.";
-
-  return `<momo-context>\n${intro}\n\n${sections.join("\n\n")}\n\n${disclaimer}\n</momo-context>`;
+  return [
+    "<momo-context>",
+    "Use this context only when it clearly helps answer the user.",
+    "",
+    sections.join("\n\n"),
+    "",
+    "Do not claim memories that are not explicitly listed.",
+    "</momo-context>",
+  ].join("\n");
 }
 
 function countUserTurns(messages: unknown[]): number {
-  let count = 0;
-  for (const row of messages) {
-    if (
-      row &&
-      typeof row === "object" &&
-      (row as Record<string, unknown>).role === "user"
-    ) {
-      count += 1;
-    }
-  }
-  return count;
+  return messages.reduce<number>((acc, row) => {
+    if (!row || typeof row !== "object") return acc;
+    return (row as Record<string, unknown>).role === "user" ? acc + 1 : acc;
+  }, 0);
 }
 
-export function buildRecallHandler(
-  client: MomoOpenClawClient,
-  cfg: MomoOpenClawConfig,
-) {
+export function buildRecallHandler(client: MomoOpenClawClient, cfg: MomoOpenClawConfig) {
   return async (event: Record<string, unknown>) => {
-    const prompt = event.prompt as string | undefined;
-    if (!prompt || prompt.length < 5) {
-      return;
-    }
+    const prompt = typeof event.prompt === "string" ? event.prompt.trim() : "";
+    if (prompt.length < 5) return;
 
     const messages = Array.isArray(event.messages) ? event.messages : [];
-    const turn = countUserTurns(messages);
-    const includeProfile = turn <= 1 || turn % cfg.profileFrequency === 0;
+    const turnCount = countUserTurns(messages);
+    const includeProfile = shouldIncludeProfile(turnCount, cfg.profileFrequency);
 
-    log.debug(`recalling for turn ${turn} (profile: ${includeProfile})`);
+    log.debug(`recall: turn=${turnCount} includeProfile=${includeProfile}`);
 
     try {
       const profile = await client.getProfile(prompt);
-      const context = formatContext(
-        includeProfile ? profile.static : [],
-        includeProfile ? profile.dynamic : [],
-        profile.searchResults,
+      const profileFacts = includeProfile ? asFacts(profile.static) : [];
+      const recentFacts = includeProfile ? asFacts(profile.dynamic) : [];
+      const relevantFacts = toSearchItems(profile.searchResults);
+
+      const context = buildContextEnvelope(
+        profileFacts,
+        recentFacts,
+        relevantFacts,
         cfg.maxRecallResults,
       );
 
-      if (!context) {
-        log.debug("no profile data to inject");
-        return;
-      }
+      if (!context) return;
 
-      log.debug(`injecting context (${context.length} chars, turn ${turn})`);
+      log.debug(`recall: injecting ${context.length} chars`);
       return { prependContext: context };
     } catch (err) {
       log.error("recall failed", err);

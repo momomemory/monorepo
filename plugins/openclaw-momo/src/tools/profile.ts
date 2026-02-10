@@ -4,6 +4,10 @@ import type { MomoOpenClawClient } from "../client";
 import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 
+function section(title: string, items: string[]): string {
+  return `## ${title}\n${items.map((item) => `- ${item}`).join("\n")}`;
+}
+
 export function registerProfileTool(
   api: OpenClawPluginApi,
   client: MomoOpenClawClient,
@@ -12,55 +16,30 @@ export function registerProfileTool(
   api.registerTool(
     {
       name: "momo_profile",
-      label: "User Profile",
-      description:
-        "Get a summary of what is known about the user — stable preferences and recent context.",
+      label: "Memory Profile",
+      description: "Retrieve known long-term and recent profile facts.",
       parameters: Type.Object({
-        query: Type.Optional(
-          Type.String({
-            description: "Optional query to focus profile retrieval",
-          }),
-        ),
+        query: Type.Optional(Type.String({ description: "Optional profile focus query" })),
       }),
       async execute(_toolCallId: string, params: { query?: string }) {
-        log.debug(`profile tool: query=${params.query ?? "(none)"}`);
+        log.debug(`tool momo_profile query=${params.query ?? "(none)"}`);
 
         const profile = await client.getProfile(params.query);
-
-        if (profile.static.length === 0 && profile.dynamic.length === 0) {
+        if (!profile.narrative && profile.static.length === 0 && profile.dynamic.length === 0) {
           return {
-            content: [
-              {
-                type: "text" as const,
-                text: "No profile information available yet.",
-              },
-            ],
+            content: [{ type: "text" as const, text: "Profile is currently empty." }],
           };
         }
 
-        const sections: string[] = [];
-
-        if (profile.narrative) {
-          sections.push(`## Summary\n${profile.narrative}`);
-        }
-
-        if (profile.static.length > 0) {
-          sections.push(
-            "## User Profile (Persistent)\n" +
-              profile.static.map((fact) => `- ${fact}`).join("\n"),
-          );
-        }
-
-        if (profile.dynamic.length > 0) {
-          sections.push(
-            "## Recent Context\n" +
-              profile.dynamic.map((fact) => `- ${fact}`).join("\n"),
-          );
-        }
+        const blocks: string[] = [];
+        if (profile.narrative) blocks.push(`## Summary\n${profile.narrative}`);
+        if (profile.static.length > 0) blocks.push(section("Persistent Facts", profile.static));
+        if (profile.dynamic.length > 0) blocks.push(section("Recent Signals", profile.dynamic));
 
         return {
-          content: [{ type: "text" as const, text: sections.join("\n\n") }],
+          content: [{ type: "text" as const, text: blocks.join("\n\n") }],
           details: {
+            hasNarrative: Boolean(profile.narrative),
             staticCount: profile.static.length,
             dynamicCount: profile.dynamic.length,
           },

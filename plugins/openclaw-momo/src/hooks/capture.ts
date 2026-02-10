@@ -2,48 +2,88 @@ import type { MomoOpenClawClient } from "../client";
 import type { MomoOpenClawConfig } from "../config";
 import { log } from "../logger";
 
-function getLastTurn(messages: unknown[]): unknown[] {
-  let lastUserIdx = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (
-      msg &&
-      typeof msg === "object" &&
-      (msg as Record<string, unknown>).role === "user"
-    ) {
-      lastUserIdx = i;
-      break;
-    }
-  }
+type MessageRole = "user" | "assistant";
 
-  return lastUserIdx >= 0 ? messages.slice(lastUserIdx) : messages;
+type ChatChunk = {
+  role: MessageRole;
+  content: string;
+};
+
+function findLastUserMessageIndex(messages: unknown[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const entry = messages[i];
+    if (!entry || typeof entry !== "object") continue;
+    if ((entry as Record<string, unknown>).role === "user") return i;
+  }
+  return -1;
 }
 
-function extractTextContent(content: unknown): string {
-  if (typeof content === "string") {
-    return content;
-  }
+function flattenMessageContent(content: unknown): string {
+  if (typeof content === "string") return content;
 
   if (Array.isArray(content)) {
-    const parts: string[] = [];
-    for (const block of content) {
-      if (!block || typeof block !== "object") continue;
-      const text = (block as Record<string, unknown>).text;
-      if (typeof text === "string" && text.length > 0) {
-        parts.push(text);
-      }
-    }
+    const parts = content
+      .map((block) => {
+        if (!block || typeof block !== "object") return "";
+        const text = (block as Record<string, unknown>).text;
+        return typeof text === "string" ? text : "";
+      })
+      .filter((value) => value.length > 0);
+
     return parts.join("\n");
   }
 
   return "";
 }
 
-function stripInjectedContext(text: string): string {
+function removeInjectedSections(text: string): string {
   return text
-    .replace(/<momo-context>[\s\S]*?<\/momo-context>\s*/g, "")
-    .replace(/<supermemory-context>[\s\S]*?<\/supermemory-context>\s*/g, "")
+    .replace(/<momo-context>[\s\S]*?<\/momo-context>/gi, "")
+    .replace(/<supermemory-context>[\s\S]*?<\/supermemory-context>/gi, "")
     .trim();
+}
+
+function normalizeCapturedText(raw: string, mode: MomoOpenClawConfig["captureMode"]): string {
+  const text = mode === "all" ? removeInjectedSections(raw) : raw.trim();
+  return text;
+}
+
+function shouldIgnore(content: string, mode: MomoOpenClawConfig["captureMode"]): boolean {
+  if (content.length === 0) return true;
+  if (mode === "all" && content.length < 12) return true;
+  return false;
+}
+
+function collectTurnMessages(
+  eventMessages: unknown[],
+  mode: MomoOpenClawConfig["captureMode"],
+): ChatChunk[] {
+  const start = findLastUserMessageIndex(eventMessages);
+  const relevant = start >= 0 ? eventMessages.slice(start) : eventMessages;
+
+  const chunks: ChatChunk[] = [];
+  for (const row of relevant) {
+    if (!row || typeof row !== "object") continue;
+
+    const record = row as Record<string, unknown>;
+    const role = record.role;
+    if (role !== "user" && role !== "assistant") continue;
+
+    const flattened = flattenMessageContent(record.content);
+    const normalized = normalizeCapturedText(flattened, mode);
+
+    if (shouldIgnore(normalized, mode)) continue;
+
+    chunks.push({ role, content: normalized });
+  }
+
+  return chunks;
+}
+
+function isCaptureEvent(event: Record<string, unknown>): event is { messages: unknown[] } {
+  if (!event.success) return false;
+  if (!Array.isArray(event.messages)) return false;
+  return event.messages.length > 0;
 }
 
 export function buildCaptureHandler(
@@ -52,47 +92,21 @@ export function buildCaptureHandler(
   getSessionKey: () => string | undefined,
 ) {
   return async (event: Record<string, unknown>) => {
-    if (
-      !event.success ||
-      !Array.isArray(event.messages) ||
-      event.messages.length === 0
-    ) {
+    if (!isCaptureEvent(event)) {
       return;
     }
 
-    const lastTurn = getLastTurn(event.messages);
-    const extracted: Array<{ role: "user" | "assistant"; content: string }> = [];
-
-    for (const msg of lastTurn) {
-      if (!msg || typeof msg !== "object") continue;
-      const row = msg as Record<string, unknown>;
-      if (row.role !== "user" && row.role !== "assistant") continue;
-
-      const text = extractTextContent(row.content);
-      if (!text) continue;
-
-      const finalText =
-        cfg.captureMode === "all" ? stripInjectedContext(text) : text.trim();
-
-      if (cfg.captureMode === "all" && finalText.length < 10) continue;
-
-      extracted.push({
-        role: row.role,
-        content: finalText,
-      });
-    }
-
-    if (extracted.length === 0) {
+    const chunks = collectTurnMessages(event.messages, cfg.captureMode);
+    if (chunks.length === 0) {
+      log.debug("capture: nothing eligible to persist");
       return;
     }
 
     const sessionKey = getSessionKey();
-    log.debug(
-      `capturing ${extracted.length} messages (${sessionKey ?? "no-session-key"})`,
-    );
+    log.debug(`capture: persisting ${chunks.length} message chunks`);
 
     try {
-      await client.ingestConversation(extracted, sessionKey, "episode");
+      await client.ingestConversation(chunks, sessionKey, "episode");
     } catch (err) {
       log.error("capture failed", err);
     }
