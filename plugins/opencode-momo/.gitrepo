@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:momomemory/opencode-momo.git
 	branch = main
-	commit = 76ed9efa3e6260d1fae4176e9dbea56ce3cf9886
+	commit = 8dc17fe5c51f38f80b7506c2ff98f52d8b3fe9c8
 	method = merge
 	cmdver = 0.4.9
-	parent = bb2829aed25e83598340f1dbaa027bf2bf41ab75
+	parent = a59bdff3dc79d1e378288856bb4ebca333d18cca
