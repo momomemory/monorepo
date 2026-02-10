@@ -10,9 +10,71 @@ default:
 
 # ─── Development ─────────────────────────────────────────────────────────────
 
-# Run the Momo server in development mode
+# Run backend and frontend development servers together (auto-reload enabled)
 dev:
-    cd momo && cargo run
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    cleanup() {
+      kill "${backend_pid:-}" "${frontend_pid:-}" 2>/dev/null || true
+      wait "${backend_pid:-}" "${frontend_pid:-}" 2>/dev/null || true
+    }
+    trap cleanup EXIT INT TERM
+
+    just dev-backend &
+    backend_pid=$!
+
+    just dev-frontend &
+    frontend_pid=$!
+
+    while true; do
+      if ! kill -0 "$backend_pid" 2>/dev/null; then
+        echo "Backend dev server stopped."
+        exit 1
+      fi
+
+      if ! kill -0 "$frontend_pid" 2>/dev/null; then
+        echo "Frontend dev server stopped."
+        exit 1
+      fi
+
+      sleep 1
+    done
+
+# Run backend development server with automatic rebuild on code changes
+dev-backend: build-frontend
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v cargo >/dev/null 2>&1; then
+      echo "cargo is required for backend development."
+      exit 1
+    fi
+
+    if ! cargo watch --version >/dev/null 2>&1; then
+      echo "cargo-watch is not installed. Installing..."
+      cargo install cargo-watch
+    fi
+
+    cd momo
+    cargo watch -w src -w tests -w Cargo.toml -w Cargo.lock -x "run"
+
+# Run frontend development server with Vite HMR
+dev-frontend:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v bun >/dev/null 2>&1; then
+      echo "bun is required for frontend development."
+      exit 1
+    fi
+
+    cd momo/frontend
+    if [ ! -d node_modules ]; then
+      bun install
+    fi
+
+    bun run dev
 
 # Run with debug logging
 dev-debug:
@@ -28,16 +90,32 @@ dev-trace:
 
 # ─── Build ───────────────────────────────────────────────────────────────────
 
+# Build frontend bundle for embedding into the Rust binary
+build-frontend:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v bun >/dev/null 2>&1; then
+      echo "bun is required for frontend build."
+      exit 1
+    fi
+
+    cd momo/frontend
+    if [ ! -d node_modules ]; then
+      bun install
+    fi
+    bun run build
+
 # Build all workspace members (debug)
-build:
+build: build-frontend
     cd momo && cargo build
 
 # Build optimized release binary
-build-release:
+build-release: build-frontend
     cd momo && cargo build --release
 
 # Build only the momo server (release)
-build-momo:
+build-momo: build-frontend
     cd momo && cargo build --release
 
 # Check code compiles without building
@@ -284,12 +362,13 @@ setup:
     @echo "Required:"
     @echo "  • Rust 1.75+    — https://rustup.rs"
     @echo "  • just          — cargo install just"
+    @echo "  • Bun           — https://bun.sh/"
     @echo ""
     @echo "Optional:"
     @echo "  • Tesseract     — OCR support"
-    @echo "  • cargo-watch   — auto-reload (just watch)"
+    @echo "  • cargo-watch   — backend auto-reload (auto-installed by just dev)"
     @echo "  • cargo-audit   — security auditing"
     @echo "  • Docker        — containerized deployment"
     @echo "  • git-subrepo   — subrepo management"
     @echo ""
-    @echo "Run 'just dev' to start the server."
+    @echo "Run 'just dev' to start backend + frontend dev servers."

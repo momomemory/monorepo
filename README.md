@@ -11,6 +11,7 @@ Give your agents a brain that actually remembers.
 ## Key Features
 
 - **Zero-Config Vector DB**: Native LibSQL vector support — no external dependencies required.
+- **Embedded Web Console**: Bun + Preact frontend is baked into the Rust binary and served at `/`.
 - **Local AI Pipeline**: Built-in support for local embeddings (FastEmbed) and transcription (Whisper).
 - **Universal Ingestion**: Extract from URLs, PDFs, DOCX, Images (OCR), and Audio/Video out of the box.
 - **Contradiction Management**: Automatically detect and resolve conflicting memories over time.
@@ -26,6 +27,11 @@ The fastest way to get Momo running is via Docker:
 ```bash
 docker run -p 3000:3000 -v ./data:/data momomemory/momo
 ```
+
+Then open:
+
+- Web console: `http://localhost:3000/`
+- API docs: `http://localhost:3000/api/v1/docs`
 
 ### Add a Memory
 ```bash
