@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/momomemory/pi-momo.git
 	branch = main
-	commit = 2f53d11f64e4ef0c21db7139fe14de919d514fff
+	commit = 2024aa973f4668b56303b2362249a4418bcce042
 	method = merge
 	cmdver = 0.4.9
-	parent = ecf0b14d6b1964dbd0aa9ed46ee1972d53459b84
+	parent = 7183f035959e646a692de05bb79320f21fe84862
