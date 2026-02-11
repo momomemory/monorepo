@@ -1,0 +1,51 @@
+{
+  "name": "@momomemory/pi-momo",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pi plugin that gives agents persistent memory using Momo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/momomemory/pi-momo.git"
+  },
+  "keywords": [
+    "pi",
+    "omp",
+    "pi-package",
+    "momo",
+    "memory",
+    "plugin",
+    "ai"
+  ],
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && tsc --emitDeclarationOnly",
+    "check-types": "tsc --noEmit",
+    "typecheck": "bun run check-types",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@momomemory/sdk": "^0.2.0",
+    "@sinclair/typebox": "0.34.47"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.50.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.3"
+  },
+  "omp": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
