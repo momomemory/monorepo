@@ -56,6 +56,7 @@ curl -X POST http://localhost:3000/api/v1/search \
 - `sdks/typescript/`: Official TypeScript SDK (`@momomemory/sdk`)
 - `plugins/opencode-momo/`: OpenCode plugin
 - `plugins/openclaw-momo/`: OpenClaw plugin
+- `plugins/pi-momo/`: Pi plugin
 
 ## Development
 
@@ -87,6 +88,7 @@ See full command list in `justfile`.
 |----------|---------|-------------|
 | **OpenCode** | [`@momomemory/opencode-momo`](https://github.com/momomemory/opencode-momo) | Persistent memory for coding agents with context injection and tool modes |
 | **OpenClaw** | [`@momomemory/openclaw-momo`](https://github.com/momomemory/openclaw-momo) | Persistent memory for OpenClaw with auto-recall, capture, and slash commands |
+| **Pi** | [`@momomemory/pi-momo`](https://github.com/momomemory/pi-momo) | Persistent memory for Pi coding agent with auto-recall, capture, and tools |
 
 ## Documentation
 
@@ -94,6 +96,7 @@ See full command list in `justfile`.
 - [`momo/docs/api.md`](./momo/docs/api.md)
 - [`momo/docs/mcp.md`](./momo/docs/mcp.md)
 - [`momo/docs/self-hosting.md`](./momo/docs/self-hosting.md)
+- [`momo/docs/release-strategy.md`](./momo/docs/release-strategy.md)
 
 ## Repositories
 
@@ -101,11 +104,10 @@ See full command list in `justfile`.
 - **[momomemory/sdk-typescript](https://github.com/momomemory/sdk-typescript)**: TypeScript SDK mirror.
 - **[momomemory/opencode-momo](https://github.com/momomemory/opencode-momo)**: OpenCode plugin.
 - **[momomemory/openclaw-momo](https://github.com/momomemory/openclaw-momo)**: OpenClaw plugin.
+- **[momomemory/pi-momo](https://github.com/momomemory/pi-momo)**: Pi plugin.
 
 ## Credits
 
 Inspired by [Supermemory](https://supermemory.ai). Named after Momo, Aang's loyal flying lemur companion.
 
 [MIT](./momo/LICENSE) © Momo Contributors
-`plugins/pi-momo/`: Pi plugin
-| **Pi** | [`@momomemory/pi-momo`](https://github.com/momomemory/pi-momo) | Persistent memory for Pi coding agent with auto-recall, capture, and tools |
