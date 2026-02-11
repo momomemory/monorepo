@@ -57,7 +57,12 @@ dev-backend: build-frontend
     fi
 
     cd momo
-    cargo watch -w src -w tests -w Cargo.toml -w Cargo.lock -x "run"
+    dev_runtime_mode="${MOMO_DEV_RUNTIME_MODE:-all}"
+    dev_single_process="${MOMO_DEV_SINGLE_PROCESS:-true}"
+
+    MOMO_RUNTIME_MODE="$dev_runtime_mode" \
+      MOMO_SINGLE_PROCESS="$dev_single_process" \
+      cargo watch -w src -w tests -w Cargo.toml -w Cargo.lock -x "run"
 
 # Run frontend development server with Vite HMR
 dev-frontend:
@@ -88,11 +93,11 @@ dev-frontend:
 
 # Run with debug logging
 dev-debug:
-    cd momo && RUST_LOG=momo=debug cargo run
+    cd momo && MOMO_RUNTIME_MODE=all MOMO_SINGLE_PROCESS=true RUST_LOG=momo=debug cargo run
 
 # Run with trace-level logging
 dev-trace:
-    cd momo && RUST_LOG=momo=trace cargo run
+    cd momo && MOMO_RUNTIME_MODE=all MOMO_SINGLE_PROCESS=true RUST_LOG=momo=trace cargo run
 
 # Watch for changes and restart (requires cargo-watch)
 # watch:
