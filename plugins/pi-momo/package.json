@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/pi-momo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Pi plugin that gives agents persistent memory using Momo",
   "license": "MIT",
