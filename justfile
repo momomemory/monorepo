@@ -305,7 +305,12 @@ publish-sdks version:
     @echo "Use 'just release-sdk-ts <version>' to publish the TypeScript SDK."
     @echo "Example: just release-sdk-ts 0.3.0"
     @echo "This wrapper exists for backwards compatibility and will not publish directly."
-    
+# Publish all plugins (OpenCode, OpenClaw, Pi)
+publish-plugins:
+    @echo "Use one of:"
+    @echo "  just release-plugin-opencode <version>"
+    @echo "  just release-plugin-openclaw <version>"
+    @echo "  just release-plugin-pi <version>"
 # Release the TypeScript SDK to the mirror and create a tag on the mirror repo.
 # Usage: just release-sdk-ts 0.3.0
 release-sdk-ts version:
@@ -318,35 +323,165 @@ release-sdk-ts version:
     fi
 
     VERSION="$1"
-
     echo "Bumping sdks/typescript/package.json to $VERSION"
     cd sdks/typescript
-
-    # Update package.json without creating a git tag
-    npm version "$VERSION" --no-git-tag-version
-
+    VERSION="$VERSION" bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); pkg.version = process.env.VERSION; fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");'
     # Stage and commit package.json change
     git add package.json
     git commit -m "chore(sdk): bump to $VERSION"
-
-    # Push to origin main
     git push origin main
-
     # Push subrepo to its upstream (this creates a commit on the subrepo remote)
     cd ../..
     echo "Pushing sdks/typescript subrepo upstream"
     git subrepo push sdks/typescript
-
-    # Ensure any new commits from subrepo push are pushed to origin main
     git push origin main
-
     # Create tag on mirror repo using its latest main commit SHA
     echo "Creating tag v$VERSION on momomemory/sdk-typescript mirror repo"
     SHA=$(gh api repos/momomemory/sdk-typescript/commits/main --jq '.sha')
     gh api repos/momomemory/sdk-typescript/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
-
-    echo "Release complete. Mirror tag: https://github.com/momomemory/sdk-typescript/releases/tag/v${VERSION}"
     echo "You can view the mirror actions: https://github.com/momomemory/sdk-typescript/actions"
+# Release the OpenCode plugin to the mirror and create a tag on the mirror repo.
+# Usage: just release-plugin-opencode 0.1.4
+release-plugin-opencode version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "${1:-}" ]; then
+      echo "Usage: just release-plugin-opencode <version>  (e.g. just release-plugin-opencode 0.1.4)"
+      exit 1
+    fi
+
+    VERSION="$1"
+
+    echo "Bumping plugins/opencode-momo/package.json to $VERSION"
+    cd plugins/opencode-momo
+
+    VERSION="$VERSION" bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); pkg.version = process.env.VERSION; fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");'
+
+    git add package.json
+    git commit -m "chore(opencode-momo): bump version to $VERSION"
+
+    git push origin main
+
+    cd ../..
+    echo "Pushing plugins/opencode-momo subrepo upstream"
+    git subrepo push plugins/opencode-momo
+
+    git push origin main
+
+    echo "Creating tag v$VERSION on momomemory/opencode-momo mirror repo"
+    SHA=$(gh api repos/momomemory/opencode-momo/commits/main --jq '.sha')
+    gh api repos/momomemory/opencode-momo/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+
+    echo "Release complete. Mirror tag: https://github.com/momomemory/opencode-momo/releases/tag/v${VERSION}"
+    echo "You can view the mirror actions: https://github.com/momomemory/opencode-momo/actions"
+
+# Release the OpenClaw plugin to the mirror and create a tag on the mirror repo.
+# Usage: just release-plugin-openclaw 0.1.1
+release-plugin-openclaw version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "${1:-}" ]; then
+      echo "Usage: just release-plugin-openclaw <version>  (e.g. just release-plugin-openclaw 0.1.1)"
+      exit 1
+    fi
+
+    VERSION="$1"
+
+    echo "Bumping plugins/openclaw-momo/package.json to $VERSION"
+    cd plugins/openclaw-momo
+
+    VERSION="$VERSION" bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); pkg.version = process.env.VERSION; fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");'
+
+    git add package.json
+    git commit -m "chore(openclaw-momo): bump version to $VERSION"
+
+    git push origin main
+
+    cd ../..
+    echo "Pushing plugins/openclaw-momo subrepo upstream"
+    git subrepo push plugins/openclaw-momo
+
+    git push origin main
+
+    echo "Creating tag v$VERSION on momomemory/openclaw-momo mirror repo"
+    SHA=$(gh api repos/momomemory/openclaw-momo/commits/main --jq '.sha')
+    gh api repos/momomemory/openclaw-momo/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+
+    echo "Release complete. Mirror tag: https://github.com/momomemory/openclaw-momo/releases/tag/v${VERSION}"
+    echo "You can view the mirror actions: https://github.com/momomemory/openclaw-momo/actions"
+
+# Release the Pi plugin to the mirror and create a tag on the mirror repo.
+# Usage: just release-plugin-pi 0.1.3
+release-plugin-pi version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "${1:-}" ]; then
+      echo "Usage: just release-plugin-pi <version>  (e.g. just release-plugin-pi 0.1.3)"
+      exit 1
+    fi
+
+    VERSION="$1"
+
+    echo "Bumping plugins/pi-momo/package.json to $VERSION"
+    cd plugins/pi-momo
+
+    VERSION="$VERSION" bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); pkg.version = process.env.VERSION; fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");'
+
+    git add package.json
+    git commit -m "chore(pi-momo): bump version to $VERSION"
+
+    git push origin main
+
+    cd ../..
+    echo "Pushing plugins/pi-momo subrepo upstream"
+    git subrepo push plugins/pi-momo
+
+    git push origin main
+
+    echo "Creating tag v$VERSION on momomemory/pi-momo mirror repo"
+    SHA=$(gh api repos/momomemory/pi-momo/commits/main --jq '.sha')
+    gh api repos/momomemory/pi-momo/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+
+    echo "Release complete. Mirror tag: https://github.com/momomemory/pi-momo/releases/tag/v${VERSION}"
+    echo "You can view the mirror actions: https://github.com/momomemory/pi-momo/actions"
+
+# Release the core Momo server mirror and create a tag on the mirror repo.
+# Usage: just release-momo 0.3.1
+release-momo version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "${1:-}" ]; then
+      echo "Usage: just release-momo <version>  (e.g. just release-momo 0.3.1)"
+      exit 1
+    fi
+
+    VERSION="$1"
+
+    echo "Bumping momo/Cargo.toml version to $VERSION"
+    tmp_file=$(mktemp)
+    awk -v version="$VERSION" 'BEGIN{done=0} { if (!done && $0 ~ /^version = "/) { print "version = \"" version "\""; done=1 } else { print } }' momo/Cargo.toml > "$tmp_file"
+    mv "$tmp_file" momo/Cargo.toml
+
+    git add momo/Cargo.toml
+    git commit -m "chore(momo): bump version to $VERSION"
+
+    git push origin main
+
+    echo "Pushing momo subrepo upstream"
+    git subrepo push momo
+
+    git push origin main
+
+    echo "Creating tag v$VERSION on momomemory/momo mirror repo"
+    SHA=$(gh api repos/momomemory/momo/commits/main --jq '.sha')
+    gh api repos/momomemory/momo/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+
+    echo "Release complete. Mirror tag: https://github.com/momomemory/momo/releases/tag/v${VERSION}"
+    echo "You can view the mirror actions: https://github.com/momomemory/momo/actions"
 
 # ─── Dependencies & Security ────────────────────────────────────────────────
 
