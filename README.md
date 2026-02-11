@@ -107,3 +107,5 @@ See full command list in `justfile`.
 Inspired by [Supermemory](https://supermemory.ai). Named after Momo, Aang's loyal flying lemur companion.
 
 [MIT](./momo/LICENSE) © Momo Contributors
+`plugins/pi-momo/`: Pi plugin
+| **Pi** | [`@momomemory/pi-momo`](https://github.com/momomemory/pi-momo) | Persistent memory for Pi coding agent with auto-recall, capture, and tools |
