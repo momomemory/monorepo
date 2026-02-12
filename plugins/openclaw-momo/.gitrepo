@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:momomemory/openclaw-momo.git
 	branch = main
-	commit = 7b4f711cd052aba381ddc72141e402632dd50079
+	commit = 1370d2af654f05e7f45b1d2ba8346adb7501593d
 	method = merge
 	cmdver = 0.4.9
-	parent = 2f17dfe1e471c5bd7173ccc7920f487156fb786b
+	parent = ba9dbc5d68346399dbe2bef78c69ec6fab724aae
