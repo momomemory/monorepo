@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/pi-momo",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Pi plugin that gives agents persistent memory using Momo",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@momomemory/sdk": "workspace:*",
+    "@momomemory/sdk": "^0.2.1",
     "@sinclair/typebox": "0.34.47"
   },
   "peerDependencies": {
