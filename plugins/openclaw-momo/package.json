@@ -1,6 +1,6 @@
 {
   "name": "@momomemory/openclaw-momo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "OpenClaw plugin that gives agents persistent memory using Momo",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@momomemory/sdk": "workspace:*",
+    "@momomemory/sdk": "^0.2.1",
     "@sinclair/typebox": "0.34.47"
   },
   "peerDependencies": {
