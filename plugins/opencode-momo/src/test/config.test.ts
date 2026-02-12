@@ -87,17 +87,17 @@ describe("config", () => {
     mkdirSync(join(tempDir, "opencode"), { recursive: true });
 
     savedEnv = {
-      MOMO_API_KEY: process.env.MOMO_API_KEY,
-      MOMO_BASE_URL: process.env.MOMO_BASE_URL,
-      MOMO_CONTAINER_TAG_USER: process.env.MOMO_CONTAINER_TAG_USER,
-      MOMO_CONTAINER_TAG_PROJECT: process.env.MOMO_CONTAINER_TAG_PROJECT,
+      MOMO_OPENCODE_API_KEY: process.env.MOMO_OPENCODE_API_KEY,
+      MOMO_OPENCODE_BASE_URL: process.env.MOMO_OPENCODE_BASE_URL,
+      MOMO_OPENCODE_CONTAINER_TAG_USER: process.env.MOMO_OPENCODE_CONTAINER_TAG_USER,
+      MOMO_OPENCODE_CONTAINER_TAG_PROJECT: process.env.MOMO_OPENCODE_CONTAINER_TAG_PROJECT,
       XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
     };
 
-    delete process.env.MOMO_API_KEY;
-    delete process.env.MOMO_BASE_URL;
-    delete process.env.MOMO_CONTAINER_TAG_USER;
-    delete process.env.MOMO_CONTAINER_TAG_PROJECT;
+    delete process.env.MOMO_OPENCODE_API_KEY;
+    delete process.env.MOMO_OPENCODE_BASE_URL;
+    delete process.env.MOMO_OPENCODE_CONTAINER_TAG_USER;
+    delete process.env.MOMO_OPENCODE_CONTAINER_TAG_PROJECT;
     process.env.XDG_CONFIG_HOME = tempDir;
   });
 
@@ -125,9 +125,11 @@ describe("config", () => {
   it("reads values from config file", () => {
     const configContent = `{
   // Momo config
-  "baseUrl": "http://custom:8080",
-  "apiKey": "file-key-123",
-  "containerTagUser": "my-user",
+  "opencode": {
+    "baseUrl": "http://custom:8080",
+    "apiKey": "file-key-123",
+    "containerTagUser": "my-user"
+  }
 }`;
     writeFileSync(
       join(tempDir, "opencode", "momo.jsonc"),
@@ -143,8 +145,10 @@ describe("config", () => {
 
   it("env vars override file values", () => {
     const configContent = `{
-  "baseUrl": "http://file-url:8080",
-  "apiKey": "file-key"
+  "opencode": {
+    "baseUrl": "http://file-url:8080",
+    "apiKey": "file-key"
+  }
 }`;
     writeFileSync(
       join(tempDir, "opencode", "momo.jsonc"),
@@ -153,7 +157,7 @@ describe("config", () => {
     );
 
     withEnv(
-      { MOMO_API_KEY: "env-key", MOMO_BASE_URL: "http://env-url:9090" },
+      { MOMO_OPENCODE_API_KEY: "env-key", MOMO_OPENCODE_BASE_URL: "http://env-url:9090" },
       () => {
         const config = loadConfig();
         expect(config.baseUrl).toBe("http://env-url:9090");
@@ -165,7 +169,7 @@ describe("config", () => {
   it("project-local config overrides global config", () => {
     writeFileSync(
       join(tempDir, "opencode", "momo.jsonc"),
-      '{ "baseUrl": "http://global:3000", "containerTagProject": "global-project" }',
+      '{ "opencode": { "baseUrl": "http://global:3000", "containerTagProject": "global-project" } }',
       "utf-8",
     );
 
@@ -173,7 +177,7 @@ describe("config", () => {
     mkdirSync(projectDir, { recursive: true });
     writeFileSync(
       join(projectDir, ".momo.jsonc"),
-      '{ "baseUrl": "http://project:4000", "containerTagProject": "project-tag" }',
+      '{ "opencode": { "baseUrl": "http://project:4000", "containerTagProject": "project-tag" } }',
       "utf-8",
     );
 
@@ -185,7 +189,7 @@ describe("config", () => {
   it("env container tag vars override project and global config", () => {
     writeFileSync(
       join(tempDir, "opencode", "momo.jsonc"),
-      '{ "containerTagUser": "global-user", "containerTagProject": "global-project" }',
+      '{ "opencode": { "containerTagUser": "global-user", "containerTagProject": "global-project" } }',
       "utf-8",
     );
 
@@ -193,14 +197,14 @@ describe("config", () => {
     mkdirSync(projectDir, { recursive: true });
     writeFileSync(
       join(projectDir, ".momo.jsonc"),
-      '{ "containerTagUser": "project-user", "containerTagProject": "project-tag" }',
+      '{ "opencode": { "containerTagUser": "project-user", "containerTagProject": "project-tag" } }',
       "utf-8",
     );
 
     withEnv(
       {
-        MOMO_CONTAINER_TAG_USER: "env-user",
-        MOMO_CONTAINER_TAG_PROJECT: "env-project",
+        MOMO_OPENCODE_CONTAINER_TAG_USER: "env-user",
+        MOMO_OPENCODE_CONTAINER_TAG_PROJECT: "env-project",
       },
       () => {
         const config = loadConfig(projectDir);
@@ -214,8 +218,8 @@ describe("config", () => {
     expect(isConfigured()).toBe(false);
   });
 
-  it("isConfigured returns true when MOMO_API_KEY is set", () => {
-    withEnv({ MOMO_API_KEY: "test-key" }, () => {
+  it("isConfigured returns true when MOMO_OPENCODE_API_KEY is set", () => {
+    withEnv({ MOMO_OPENCODE_API_KEY: "test-key" }, () => {
       expect(isConfigured()).toBe(true);
     });
   });
@@ -223,7 +227,7 @@ describe("config", () => {
   it("isConfigured returns true when apiKey is in config file", () => {
     writeFileSync(
       join(tempDir, "opencode", "momo.jsonc"),
-      '{ "apiKey": "file-key" }',
+      '{ "opencode": { "apiKey": "file-key" } }',
       "utf-8",
     );
     expect(isConfigured()).toBe(true);

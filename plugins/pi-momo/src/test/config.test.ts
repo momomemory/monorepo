@@ -67,13 +67,13 @@ describe("pi-momo config", () => {
     expect(cfg.maxRecallResults).toBe(5);
   });
 
-  it("falls back to MOMO_* env vars if MOMO_PI_* not set", () => {
+  it("ignores generic MOMO_* env vars", () => {
     process.env.MOMO_BASE_URL = "http://from-momo-env";
     process.env.MOMO_API_KEY = "momo-key";
 
     const cfg = loadConfig("/nonexistent/path");
-    expect(cfg.baseUrl).toBe("http://from-momo-env");
-    expect(cfg.apiKey).toBe("momo-key");
+    expect(cfg.baseUrl).toBe("http://localhost:3000");
+    expect(cfg.apiKey).toBeUndefined();
   });
 
   it("MOMO_PI_* takes precedence over MOMO_*", () => {
@@ -124,11 +124,11 @@ describe("pi-momo config", () => {
     expect(cfg.debug).toBe(true);
   });
 
-  it("reports source metadata for env overrides", () => {
+  it("returns undefined metadata for env overrides", () => {
     process.env.MOMO_PI_BASE_URL = "http://from-pi-env";
     const { config, meta } = loadConfigWithMeta("/nonexistent/path");
     expect(config.baseUrl).toBe("http://from-pi-env");
-    expect(meta.sources.baseUrl).toBe("env:MOMO_PI");
+    expect(meta).toBeUndefined();
   });
 });
 
@@ -155,7 +155,7 @@ describe("pi-momo config files", () => {
   it("reads project .momo.jsonc file", () => {
     writeFileSync(
       join(tempDir, ".momo.jsonc"),
-      JSON.stringify({ baseUrl: "http://project-config", apiKey: "project-key" }),
+      JSON.stringify({ pi: { baseUrl: "http://project-config", apiKey: "project-key" } }),
     );
 
     const cfg = loadConfig(tempDir);
@@ -163,19 +163,19 @@ describe("pi-momo config files", () => {
     expect(cfg.apiKey).toBe("project-key");
   });
 
-  it("reads project momo.jsonc file", () => {
+  it("ignores project momo.jsonc file", () => {
     writeFileSync(
       join(tempDir, "momo.jsonc"),
-      JSON.stringify({ baseUrl: "http://project-plain-config" }),
+      JSON.stringify({ pi: { baseUrl: "http://project-plain-config" } }),
     );
 
     const cfg = loadConfig(tempDir);
-    expect(cfg.baseUrl).toBe("http://project-plain-config");
+    expect(cfg.baseUrl).toBe("http://localhost:3000");
   });
 
   it("prefers .momo.jsonc over momo.jsonc", () => {
-    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ baseUrl: "http://dot-config" }));
-    writeFileSync(join(tempDir, "momo.jsonc"), JSON.stringify({ baseUrl: "http://plain-config" }));
+    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ pi: { baseUrl: "http://dot-config" } }));
+    writeFileSync(join(tempDir, "momo.jsonc"), JSON.stringify({ pi: { baseUrl: "http://plain-config" } }));
 
     const cfg = loadConfig(tempDir);
     expect(cfg.baseUrl).toBe("http://dot-config");
@@ -186,9 +186,11 @@ describe("pi-momo config files", () => {
       join(tempDir, ".momo.jsonc"),
       `{
   // Global Momo config
-  "baseUrl": "http://jsonc-config",
-  /* API key for auth */
-  "apiKey": "jsonc-key"
+  "pi": {
+    "baseUrl": "http://jsonc-config",
+    /* API key for auth */
+    "apiKey": "jsonc-key"
+  }
 }`,
     );
 
@@ -198,7 +200,7 @@ describe("pi-momo config files", () => {
   });
 
   it("env vars override project config", () => {
-    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ baseUrl: "http://project-config" }));
+    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ pi: { baseUrl: "http://project-config" } }));
     process.env.MOMO_PI_BASE_URL = "http://env-override";
 
     const cfg = loadConfig(tempDir);
@@ -212,11 +214,10 @@ describe("pi-momo config files", () => {
     expect(cfg.containerTag).toBe("my_project_name_with_spaces");
   });
 
-  it("reports project file and source metadata", () => {
-    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ baseUrl: "http://dot-config" }));
+  it("returns undefined metadata for project config", () => {
+    writeFileSync(join(tempDir, ".momo.jsonc"), JSON.stringify({ pi: { baseUrl: "http://dot-config" } }));
 
     const { meta } = loadConfigWithMeta(tempDir);
-    expect(meta.files.project).toBe(join(tempDir, ".momo.jsonc"));
-    expect(meta.sources.baseUrl).toBe("project");
+    expect(meta).toBeUndefined();
   });
 });

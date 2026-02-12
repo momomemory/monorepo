@@ -75,10 +75,10 @@ bunx @momomemory/opencode-momo configure
 \`\`\`
 
 Or set environment variables:
-- \`MOMO_BASE_URL\` - Momo server URL (default: http://localhost:3000)
-- \`MOMO_API_KEY\` - API key for authentication
-- \`MOMO_CONTAINER_TAG_USER\` - Optional user container tag override
-- \`MOMO_CONTAINER_TAG_PROJECT\` - Optional project container tag override
+- \`MOMO_OPENCODE_BASE_URL\` - Momo server URL (default: http://localhost:3000)
+- \`MOMO_OPENCODE_API_KEY\` - API key for authentication
+- \`MOMO_OPENCODE_CONTAINER_TAG_USER\` - Optional user container tag override
+- \`MOMO_OPENCODE_CONTAINER_TAG_PROJECT\` - Optional project container tag override
 
 After configuration, restart OpenCode to activate.
 `;
@@ -368,12 +368,20 @@ export function writeMomoConfig(
     }
   }
 
-  const priorBaseUrl = typeof existing.baseUrl === "string" ? existing.baseUrl : undefined;
-  const priorApiKey = typeof existing.apiKey === "string" ? existing.apiKey : undefined;
+  const existingOpenCode =
+    existing.opencode && typeof existing.opencode === "object" && !Array.isArray(existing.opencode)
+      ? (existing.opencode as Record<string, unknown>)
+      : {};
+
+  const priorBaseUrl =
+    typeof existingOpenCode.baseUrl === "string" ? existingOpenCode.baseUrl : undefined;
+  const priorApiKey = typeof existingOpenCode.apiKey === "string" ? existingOpenCode.apiKey : undefined;
   const priorContainerTagUser =
-    typeof existing.containerTagUser === "string" ? existing.containerTagUser : undefined;
+    typeof existingOpenCode.containerTagUser === "string" ? existingOpenCode.containerTagUser : undefined;
   const priorContainerTagProject =
-    typeof existing.containerTagProject === "string" ? existing.containerTagProject : undefined;
+    typeof existingOpenCode.containerTagProject === "string"
+      ? existingOpenCode.containerTagProject
+      : undefined;
 
   const config = {
     baseUrl: options.baseUrl ?? priorBaseUrl ?? "http://localhost:3000",
@@ -383,16 +391,19 @@ export function writeMomoConfig(
   };
 
   const lines: string[] = ["{"];
-  lines.push("  // Momo server URL (default: http://localhost:3000)");
-  lines.push(`  "baseUrl": ${JSON.stringify(config.baseUrl)},`);
-  lines.push("  // API key for authentication (leave empty if your server has auth disabled)");
-  lines.push(`  "apiKey": ${JSON.stringify(config.apiKey)},`);
-  lines.push("  // Optional override for user memory container tag (default: auto-derived from username)");
-  lines.push(`  "containerTagUser": ${JSON.stringify(config.containerTagUser)},`);
-  lines.push("  // Optional override for project memory container tag (default: auto-derived from project directory)");
-  lines.push(`  "containerTagProject": ${JSON.stringify(config.containerTagProject)}`);
-  lines.push("  // Note: project-local config files (.momo.jsonc / momo.jsonc) override this global file,");
-  lines.push("  // and MOMO_* environment variables override both.");
+  lines.push("  // OpenCode plugin config for Momo");
+  lines.push("  \"opencode\": {");
+  lines.push("    // Momo server URL (default: http://localhost:3000)");
+  lines.push(`    \"baseUrl\": ${JSON.stringify(config.baseUrl)},`);
+  lines.push("    // API key for authentication (leave empty if your server has auth disabled)");
+  lines.push(`    \"apiKey\": ${JSON.stringify(config.apiKey)},`);
+  lines.push("    // Optional override for user memory container tag (default: auto-derived from username)");
+  lines.push(`    \"containerTagUser\": ${JSON.stringify(config.containerTagUser)},`);
+  lines.push("    // Optional override for project memory container tag (default: auto-derived from project directory)");
+  lines.push(`    \"containerTagProject\": ${JSON.stringify(config.containerTagProject)}`);
+  lines.push("  }");
+  lines.push("  // Note: project-local config file (.momo.jsonc) overrides this global file,");
+  lines.push("  // and MOMO_OPENCODE_* environment variables override both.");
   lines.push("}");
   lines.push("");
 
@@ -453,8 +464,8 @@ Next steps:
      $ opencode-momo configure --base-url http://localhost:3000 --api-key YOUR_KEY
 
      Or set environment variables:
-     $ export MOMO_API_KEY=your-key
-     $ export MOMO_BASE_URL=http://localhost:3000
+     $ export MOMO_OPENCODE_API_KEY=your-key
+     $ export MOMO_OPENCODE_BASE_URL=http://localhost:3000
 
   2. Restart OpenCode to activate the plugin.
 

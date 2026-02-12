@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { MomoPiClient } from "../client";
-import type { MomoPiConfig, MomoPiConfigMeta } from "../config";
+import type { MomoPiConfig } from "../config";
 import { log } from "../logger";
 import { buildDocumentId, detectCategory, toMemoryType } from "../memory";
 
@@ -48,7 +48,6 @@ export function registerCommands(
   client: MomoPiClient,
   getSessionId: () => string | undefined,
   cfg: MomoPiConfig,
-  cfgMeta: MomoPiConfigMeta,
 ): void {
   pi.registerCommand("remember", {
     description: "Persist an explicit memory",
@@ -135,27 +134,19 @@ export function registerCommands(
   });
 
   pi.registerCommand("momo-debug", {
-    description: "Show effective momo config and where each value came from",
+    description: "Show effective momo config",
     handler: async (_args: string, ctx: ExtensionContext) => {
       const lines = [
-        "Momo debug",
+        "Momo config",
         "",
-        `cwd: ${cfgMeta.cwd ?? "(unknown)"}`,
-        "",
-        "Config files discovered:",
-        `- project: ${cfgMeta.files.project ?? "(none)"}`,
-        `- ~/.omp/momo.jsonc: ${cfgMeta.files.ompGlobal ?? "(none)"}`,
-        `- ~/.pi/momo.jsonc: ${cfgMeta.files.piGlobal ?? "(none)"}`,
-        "",
-        "Effective values:",
-        `- baseUrl: ${cfg.baseUrl} [${cfgMeta.sources.baseUrl}]`,
-        `- apiKey: ${maskSecret(cfg.apiKey)} [${cfgMeta.sources.apiKey}]`,
-        `- containerTag: ${cfg.containerTag} [${cfgMeta.sources.containerTag}]`,
-        `- autoRecall: ${String(cfg.autoRecall)} [${cfgMeta.sources.autoRecall}]`,
-        `- autoCapture: ${String(cfg.autoCapture)} [${cfgMeta.sources.autoCapture}]`,
-        `- maxRecallResults: ${String(cfg.maxRecallResults)} [${cfgMeta.sources.maxRecallResults}]`,
-        `- profileFrequency: ${String(cfg.profileFrequency)} [${cfgMeta.sources.profileFrequency}]`,
-        `- debug: ${String(cfg.debug)} [${cfgMeta.sources.debug}]`,
+        `- baseUrl: ${cfg.baseUrl}`,
+        `- apiKey: ${maskSecret(cfg.apiKey)}`,
+        `- containerTag: ${cfg.containerTag}`,
+        `- autoRecall: ${String(cfg.autoRecall)}`,
+        `- autoCapture: ${String(cfg.autoCapture)}`,
+        `- maxRecallResults: ${String(cfg.maxRecallResults)}`,
+        `- profileFrequency: ${String(cfg.profileFrequency)}`,
+        `- debug: ${String(cfg.debug)}`,
       ];
 
       output(ctx, lines.join("\n"), "info");

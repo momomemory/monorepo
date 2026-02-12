@@ -25,7 +25,28 @@ export type {
   SearchScope,
   V1MemoryType,
   V1DocumentType,
+  PluginType,
+  MomoPluginConfig,
+  MomoPluginConfigLoaderOptions,
+  OpenClawPluginConfig,
+  OpenCodePluginConfig,
+  PiPluginConfig,
+  ResolvedOpenClawPluginConfig,
+  ResolvedOpenCodePluginConfig,
+  ResolvedPiPluginConfig,
 } from "./types.js";
+
+export {
+  loadPluginConfig,
+  loadOpenClawPluginConfig,
+  loadOpenCodePluginConfig,
+  loadPiPluginConfig,
+  parseOpenClawInlineConfig,
+  parseOpenCodeInlineConfig,
+  parsePiInlineConfig,
+  type MomoPluginConfigResult,
+  type MomoPluginConfigLoaderMeta,
+} from "./plugin-config.js";
 
 export {
   createRawClient,

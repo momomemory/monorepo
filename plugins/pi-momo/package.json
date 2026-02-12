@@ -24,7 +24,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@momomemory/sdk": "^0.2.0",
+    "@momomemory/sdk": "workspace:*",
     "@sinclair/typebox": "0.34.47"
   },
   "peerDependencies": {

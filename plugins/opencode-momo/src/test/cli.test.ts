@@ -173,8 +173,8 @@ describe("writeCommandFiles", () => {
 
     const content = readFileSync(join(configDir, "command", "momo-configure.md"), "utf-8");
     expect(content).toContain("bunx @momomemory/opencode-momo configure");
-    expect(content).toContain("MOMO_BASE_URL");
-    expect(content).toContain("MOMO_API_KEY");
+    expect(content).toContain("MOMO_OPENCODE_BASE_URL");
+    expect(content).toContain("MOMO_OPENCODE_API_KEY");
   });
 
   it("overwrites existing command files without error", () => {
@@ -213,6 +213,7 @@ describe("writeMomoConfig", () => {
     });
 
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
+    expect(raw).toContain('"opencode"');
     expect(raw).toContain('"baseUrl": "http://myserver:8080"');
     expect(raw).toContain('"apiKey": "test-key-123"');
     expect(raw).toContain('"containerTagUser": ""');
@@ -238,10 +239,10 @@ describe("writeMomoConfig", () => {
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
     const stripped = stripJsoncComments(raw);
     const parsed = JSON.parse(stripped);
-    expect(parsed.baseUrl).toBe("http://localhost:3000");
-    expect(parsed.apiKey).toBe("secret");
-    expect(parsed.containerTagUser).toBe("");
-    expect(parsed.containerTagProject).toBe("");
+    expect(parsed.opencode.baseUrl).toBe("http://localhost:3000");
+    expect(parsed.opencode.apiKey).toBe("secret");
+    expect(parsed.opencode.containerTagUser).toBe("");
+    expect(parsed.opencode.containerTagProject).toBe("");
   });
 
   it("updates existing momo.jsonc without losing data", () => {
@@ -254,10 +255,10 @@ describe("writeMomoConfig", () => {
 
     const raw = readFileSync(join(configDir, "momo.jsonc"), "utf-8");
     const parsed = JSON.parse(stripJsoncComments(raw));
-    expect(parsed.apiKey).toBe("updated-key");
-    expect(parsed.baseUrl).toBe("http://first:1111");
-    expect(parsed.containerTagUser).toBe("");
-    expect(parsed.containerTagProject).toBe("");
+    expect(parsed.opencode.apiKey).toBe("updated-key");
+    expect(parsed.opencode.baseUrl).toBe("http://first:1111");
+    expect(parsed.opencode.containerTagUser).toBe("");
+    expect(parsed.opencode.containerTagProject).toBe("");
   });
 
   it("writes all config fields with defaults when values are not provided", () => {
@@ -274,7 +275,7 @@ describe("writeMomoConfig", () => {
     const configPath = join(configDir, "momo.jsonc");
     writeFileSync(
       configPath,
-      '{\n  "baseUrl": "http://localhost:3000",\n  "apiKey": "",\n  "containerTagUser": "user-tag",\n  "containerTagProject": "project-tag"\n}\n',
+      '{\n  "opencode": {\n    "baseUrl": "http://localhost:3000",\n    "apiKey": "",\n    "containerTagUser": "user-tag",\n    "containerTagProject": "project-tag"\n  }\n}\n',
       "utf-8",
     );
 
@@ -282,7 +283,7 @@ describe("writeMomoConfig", () => {
 
     const raw = readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(stripJsoncComments(raw));
-    expect(parsed.containerTagUser).toBe("user-tag");
-    expect(parsed.containerTagProject).toBe("project-tag");
+    expect(parsed.opencode.containerTagUser).toBe("user-tag");
+    expect(parsed.opencode.containerTagProject).toBe("project-tag");
   });
 });

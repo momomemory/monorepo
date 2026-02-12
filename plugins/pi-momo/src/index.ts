@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { MomoPiClient } from "./client";
 import { registerCommands } from "./commands/slash";
-import { loadConfigWithMeta } from "./config";
+import { loadPiPluginConfig } from "@momomemory/sdk";
 import { buildCaptureHandler } from "./hooks/capture";
 import { buildRecallHandler } from "./hooks/recall";
 import { initLogger, log } from "./logger";
@@ -20,8 +20,7 @@ const consoleLogger = {
 
 export default function (pi: ExtensionAPI) {
   // Load config from files + env vars
-  // Precedence: env > project config > ~/.omp/momo.jsonc > ~/.pi/momo.jsonc > defaults
-  const { config: cfg, meta: cfgMeta } = loadConfigWithMeta(process.cwd());
+  const { config: cfg } = loadPiPluginConfig({ cwd: process.cwd() });
 
   initLogger(consoleLogger, cfg.debug);
 
@@ -65,7 +64,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   // Register slash commands
-  registerCommands(pi, client, getSessionId, cfg, cfgMeta);
+  registerCommands(pi, client, getSessionId, cfg);
 
   log.info(`momo: connected (baseUrl=${client.getBaseUrl()}, container=${client.getContainerTag()})`);
 }

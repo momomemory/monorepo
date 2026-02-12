@@ -1,0 +1,9 @@
+{
+  "name": "momo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "sdks/typescript",
+    "plugins/*"
+  ]
+}

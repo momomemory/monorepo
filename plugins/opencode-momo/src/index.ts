@@ -122,7 +122,7 @@ export const MomoPlugin: Plugin = async (ctx: PluginInput) => {
   function requireMomo(): MomoClient {
     if (!momo) {
       throw new Error(
-        "Momo is not configured. Set MOMO_API_KEY or configure ~/.config/opencode/momo.jsonc (or project-local .momo.jsonc).",
+        "Momo is not configured. Set MOMO_OPENCODE_API_KEY or configure ~/.config/opencode/momo.jsonc (or project-local .momo.jsonc).",
       );
     }
     return momo;

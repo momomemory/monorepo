@@ -39,8 +39,8 @@ function makeMockCtx(): PluginInput {
 describe("chat.message hook", () => {
   beforeEach(() => {
     setEnv({
-      MOMO_API_KEY: undefined,
-      MOMO_BASE_URL: undefined,
+      MOMO_OPENCODE_API_KEY: undefined,
+      MOMO_OPENCODE_BASE_URL: undefined,
       XDG_CONFIG_HOME: "/tmp/nonexistent-config-dir",
     });
   });

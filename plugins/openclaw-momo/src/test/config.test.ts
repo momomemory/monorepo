@@ -40,7 +40,7 @@ describe("openclaw-momo config", () => {
     expect(cfg.maxRecallResults).toBe(10);
     expect(cfg.profileFrequency).toBe(50);
     expect(cfg.captureMode).toBe("all");
-    expect(cfg.containerTag).toMatch(/^openclaw_[A-Za-z0-9_]+$/);
+    expect(cfg.containerTag).toMatch(/^oclw_[A-Za-z0-9_]+$/);
   });
 
   it("prefers plugin config values", () => {
@@ -76,13 +76,13 @@ describe("openclaw-momo config", () => {
     expect(cfg.apiKey).toBe("openclaw-key");
   });
 
-  it("uses generic momo env vars if openclaw env vars are missing", () => {
+  it("ignores generic momo env vars", () => {
     process.env.MOMO_BASE_URL = "http://from-momo-env";
     process.env.MOMO_API_KEY = "momo-key";
 
     const cfg = parseConfig({});
-    expect(cfg.baseUrl).toBe("http://from-momo-env");
-    expect(cfg.apiKey).toBe("momo-key");
+    expect(cfg.baseUrl).toBe("http://localhost:3000");
+    expect(cfg.apiKey).toBeUndefined();
   });
 
   it("resolves ${ENV_VAR} placeholders", () => {
@@ -92,7 +92,8 @@ describe("openclaw-momo config", () => {
     delete process.env.MY_MOMO_URL;
   });
 
-  it("throws on unknown keys", () => {
-    expect(() => parseConfig({ nope: true })).toThrow(/unknown keys/);
+  it("ignores unknown keys", () => {
+    const cfg = parseConfig({ nope: true });
+    expect(cfg.baseUrl).toBe("http://localhost:3000");
   });
 });

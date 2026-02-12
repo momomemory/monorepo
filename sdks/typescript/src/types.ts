@@ -49,3 +49,82 @@ export interface RequestOptions {
   /** Additional headers for this request */
   headers?: Record<string, string>;
 }
+
+// ============================================================================
+// Plugin Configuration Types
+// ============================================================================
+
+export type PluginType = "openclaw" | "opencode" | "pi";
+
+export interface MomoPluginConfigBase {
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+export interface OpenClawPluginConfig extends MomoPluginConfigBase {
+  containerTag?: string;
+  perAgentMemory?: boolean;
+  autoRecall?: boolean;
+  autoCapture?: boolean;
+  maxRecallResults?: number;
+  profileFrequency?: number;
+  captureMode?: "everything" | "all";
+  debug?: boolean;
+}
+
+export interface OpenCodePluginConfig extends MomoPluginConfigBase {
+  containerTagUser?: string;
+  containerTagProject?: string;
+}
+
+export interface PiPluginConfig extends MomoPluginConfigBase {
+  containerTag?: string;
+  autoRecall?: boolean;
+  autoCapture?: boolean;
+  maxRecallResults?: number;
+  profileFrequency?: number;
+  debug?: boolean;
+}
+
+export interface MomoPluginConfig {
+  openclaw?: OpenClawPluginConfig;
+  opencode?: OpenCodePluginConfig;
+  pi?: PiPluginConfig;
+}
+
+export interface ResolvedOpenClawPluginConfig {
+  baseUrl: string;
+  apiKey?: string;
+  containerTag: string;
+  perAgentMemory: boolean;
+  autoRecall: boolean;
+  autoCapture: boolean;
+  maxRecallResults: number;
+  profileFrequency: number;
+  captureMode: "everything" | "all";
+  debug: boolean;
+}
+
+export interface ResolvedOpenCodePluginConfig {
+  baseUrl: string;
+  apiKey?: string;
+  containerTagUser?: string;
+  containerTagProject?: string;
+}
+
+export interface ResolvedPiPluginConfig {
+  baseUrl: string;
+  apiKey?: string;
+  containerTag: string;
+  autoRecall: boolean;
+  autoCapture: boolean;
+  maxRecallResults: number;
+  profileFrequency: number;
+  debug: boolean;
+}
+
+export type MomoPluginConfigLoaderOptions = {
+  cwd?: string;
+  globalConfigDir?: string;
+  envPrefix?: string;
+};

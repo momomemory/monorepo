@@ -34,6 +34,7 @@
     "lint": "echo lint"
   },
   "devDependencies": {
+    "bun-types": "^1.0.0",
     "typescript": "^5.0.0",
     "openapi-typescript": "^7.0.0",
     "openapi-fetch": "^0.13.0"

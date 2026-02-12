@@ -66,8 +66,8 @@ function getTool(hooks: Hooks, name: string): ToolDefinition {
 describe("momo tool", () => {
   beforeEach(() => {
     setEnv({
-      MOMO_API_KEY: undefined,
-      MOMO_BASE_URL: undefined,
+      MOMO_OPENCODE_API_KEY: undefined,
+      MOMO_OPENCODE_BASE_URL: undefined,
       XDG_CONFIG_HOME: "/tmp/nonexistent-config-dir",
     });
   });
@@ -179,7 +179,7 @@ describe("momo tool", () => {
 
   describe("validation errors", () => {
     it("add without content returns error", async () => {
-      setEnv({ MOMO_API_KEY: "test-key" });
+      setEnv({ MOMO_OPENCODE_API_KEY: "test-key" });
       const { MomoPlugin } = await import("../index");
       const hooks = await MomoPlugin(makeMockCtx());
       const result = await getMomoTool(hooks).execute(
@@ -190,7 +190,7 @@ describe("momo tool", () => {
     });
 
     it("add with fully private content returns error", async () => {
-      setEnv({ MOMO_API_KEY: "test-key" });
+      setEnv({ MOMO_OPENCODE_API_KEY: "test-key" });
       const { MomoPlugin } = await import("../index");
       const hooks = await MomoPlugin(makeMockCtx());
       const result = await getMomoTool(hooks).execute(
@@ -201,7 +201,7 @@ describe("momo tool", () => {
     });
 
     it("search without query returns error", async () => {
-      setEnv({ MOMO_API_KEY: "test-key" });
+      setEnv({ MOMO_OPENCODE_API_KEY: "test-key" });
       const { MomoPlugin } = await import("../index");
       const hooks = await MomoPlugin(makeMockCtx());
       const result = await getMomoTool(hooks).execute(
@@ -212,7 +212,7 @@ describe("momo tool", () => {
     });
 
     it("forget without memoryId returns error", async () => {
-      setEnv({ MOMO_API_KEY: "test-key" });
+      setEnv({ MOMO_OPENCODE_API_KEY: "test-key" });
       const { MomoPlugin } = await import("../index");
       const hooks = await MomoPlugin(makeMockCtx());
       const result = await getMomoTool(hooks).execute(
