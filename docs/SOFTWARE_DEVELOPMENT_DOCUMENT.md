@@ -718,7 +718,7 @@ Momo provides two API versions for backward compatibility:
 Authorization: Bearer <api_key>
 ```
 
-Configure via `MOMO_API_KEYS` environment variable (comma-separated). Empty = no auth.
+Configure via `MOMO_API_KEYS` environment variable (comma-separated). Empty/unset locks protected routes (401).
 
 ### 5.3 v3 Endpoints (Documents)
 

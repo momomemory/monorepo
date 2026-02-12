@@ -26,7 +26,11 @@ The system handles document ingestion, memory extraction, and hybrid search with
 Run Momo with Docker:
 
 ```bash
-docker run --name momo -d --restart unless-stopped -p 3000:3000 -v momo-data:/data ghcr.io/momomemory/momo:latest
+docker run --name momo -d --restart unless-stopped -p 3000:3000 -e MOMO_API_KEYS=dev-key -v momo-data:/data ghcr.io/momomemory/momo:latest
+```
+
+```bash
+export API_KEY=dev-key
 ```
 
 MCP is available at `http://localhost:3000/mcp`. See [MCP Guide](./mcp.md).
@@ -35,6 +39,7 @@ Add a memory:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/conversations:ingest \
+  -H "Authorization: Bearer ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "I prefer dark mode"}], "containerTag": "user_1"}'
 ```

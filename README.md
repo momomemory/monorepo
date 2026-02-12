@@ -11,7 +11,11 @@ Momo is a self-hostable AI memory system built as a single Rust binary. It gives
 Run the latest container image:
 
 ```bash
-docker run --name momo -d --restart unless-stopped -p 3000:3000 -v momo-data:/data ghcr.io/momomemory/momo:latest
+docker run --name momo -d --restart unless-stopped -p 3000:3000 -e MOMO_API_KEYS=dev-key -v momo-data:/data ghcr.io/momomemory/momo:latest
+```
+
+```bash
+export API_KEY=dev-key
 ```
 
 Then open:
@@ -26,6 +30,7 @@ Add memory:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/conversations:ingest \
+  -H "Authorization: Bearer ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "I prefer dark mode"}], "containerTag": "user_1"}'
 ```
@@ -34,6 +39,7 @@ Search memory:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/search \
+  -H "Authorization: Bearer ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"q": "What are the user preferences?", "containerTags": ["user_1"], "scope": "hybrid"}'
 ```

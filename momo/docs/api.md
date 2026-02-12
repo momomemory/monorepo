@@ -58,8 +58,8 @@ Authorization: Bearer <your_api_key>
 ```
 
 - API keys are configured via the `MOMO_API_KEYS` environment variable.
-- If no keys are configured, authentication is disabled.
-- Failed authentication returns a `401 Unauthorized` response with `{"error": {"code": "unauthorized", "message": "Authentication required"}}`.
+- If no keys are configured, protected routes are locked and return `401 Unauthorized`.
+- Failed authentication returns a `401 Unauthorized` response with `{"error": {"code": "unauthorized", "message": "..."}}`.
 
 ---
 

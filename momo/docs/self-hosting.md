@@ -107,7 +107,7 @@ Momo is available as a pre-built image on GitHub Container Registry (GHCR).
 
 ```bash
 # One-command setup (recommended)
-docker run --name momo -d --restart unless-stopped -p 3000:3000 -v momo-data:/data ghcr.io/momomemory/momo:latest
+docker run --name momo -d --restart unless-stopped -p 3000:3000 -e MOMO_API_KEYS=dev-key -v momo-data:/data ghcr.io/momomemory/momo:latest
 ```
 
 ```bash
@@ -123,7 +123,7 @@ docker stop momo && docker rm momo
 ```bash
 # Optional: build locally instead of using GHCR
 docker build -t momo .
-docker run --name momo -d --restart unless-stopped -p 3000:3000 -v momo-data:/data momo
+docker run --name momo -d --restart unless-stopped -p 3000:3000 -e MOMO_API_KEYS=dev-key -v momo-data:/data momo
 ```
 
 **Note:** The `/data` volume stores the database. Using the named volume `momo-data` keeps data across container restarts/redeploys.
@@ -154,7 +154,7 @@ Momo follows a `provider/model` string format for external services (Embeddings,
 | --------------- | ------------------------------------------- | --------- |
 | `MOMO_HOST`     | Bind address                                | `0.0.0.0` |
 | `MOMO_PORT`     | Listen port                                 | `3000`    |
-| `MOMO_API_KEYS` | Comma-separated API keys for authentication | (None)    |
+| `MOMO_API_KEYS` | Comma-separated API keys for authentication (required for protected API routes) | (None)    |
 
 ### MCP (Built-in)
 
