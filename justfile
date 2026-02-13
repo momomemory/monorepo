@@ -317,12 +317,7 @@ release-sdk-ts version:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -z "${1:-}" ]; then
-      echo "Usage: just release-sdk-ts <version>  (e.g. just release-sdk-ts 0.3.0)"
-      exit 1
-    fi
-
-    VERSION="$1"
+    VERSION="{{ version }}"
     echo "Bumping sdks/typescript/package.json to $VERSION"
     cd sdks/typescript
     VERSION="$VERSION" bun -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); pkg.version = process.env.VERSION; fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");'
@@ -346,12 +341,7 @@ release-plugin-opencode version:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -z "${1:-}" ]; then
-      echo "Usage: just release-plugin-opencode <version>  (e.g. just release-plugin-opencode 0.1.4)"
-      exit 1
-    fi
-
-    VERSION="$1"
+    VERSION="{{ version }}"
 
     echo "Bumping plugins/opencode-momo/package.json to $VERSION"
     cd plugins/opencode-momo
@@ -382,12 +372,7 @@ release-plugin-openclaw version:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -z "${1:-}" ]; then
-      echo "Usage: just release-plugin-openclaw <version>  (e.g. just release-plugin-openclaw 0.1.1)"
-      exit 1
-    fi
-
-    VERSION="$1"
+    VERSION="{{ version }}"
 
     echo "Bumping plugins/openclaw-momo/package.json to $VERSION"
     cd plugins/openclaw-momo
@@ -418,12 +403,7 @@ release-plugin-pi version:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -z "${1:-}" ]; then
-      echo "Usage: just release-plugin-pi <version>  (e.g. just release-plugin-pi 0.1.3)"
-      exit 1
-    fi
-
-    VERSION="$1"
+    VERSION="{{ version }}"
 
     echo "Bumping plugins/pi-momo/package.json to $VERSION"
     cd plugins/pi-momo
@@ -454,12 +434,7 @@ release-momo version:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -z "${1:-}" ]; then
-      echo "Usage: just release-momo <version>  (e.g. just release-momo 0.3.1)"
-      exit 1
-    fi
-
-    VERSION="$1"
+    VERSION="{{ version }}"
 
     echo "Bumping momo/Cargo.toml version to $VERSION"
     tmp_file=$(mktemp)
