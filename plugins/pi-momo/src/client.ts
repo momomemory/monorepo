@@ -56,7 +56,6 @@ export class MomoPiClient {
       defaultContainerTag: containerTag,
     });
 
-    log.info(`connected to ${baseUrl} (container: ${containerTag})`);
   }
 
   async addMemory(input: AddMemoryInput): Promise<{ id: string }> {

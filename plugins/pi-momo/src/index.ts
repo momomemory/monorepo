@@ -12,7 +12,7 @@ import { registerStoreTool } from "./tools/store";
 
 // Create a logger backend using console
 const consoleLogger = {
-  info: (msg: string, ...args: unknown[]) => console.log(`[INFO] ${msg}`, ...args),
+  info: (msg: string, ...args: unknown[]) => console.log(msg, ...args),
   warn: (msg: string, ...args: unknown[]) => console.warn(`[WARN] ${msg}`, ...args),
   error: (msg: string, ...args: unknown[]) => console.error(`[ERROR] ${msg}`, ...args),
   debug: (msg: string, ...args: unknown[]) => console.debug(`[DEBUG] ${msg}`, ...args),
@@ -66,5 +66,4 @@ export default function (pi: ExtensionAPI) {
   // Register slash commands
   registerCommands(pi, client, getSessionId, cfg);
 
-  log.info(`momo: connected (baseUrl=${client.getBaseUrl()}, container=${client.getContainerTag()})`);
 }
