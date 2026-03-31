@@ -82,15 +82,16 @@ pub async fn v1_auth_middleware(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::state::AppState;
     use crate::config::{
         Config, DatabaseConfig, EmbeddingsConfig, InferenceConfig, McpConfig, MemoryConfig,
         OcrConfig, ProcessingConfig, ServerConfig, TranscriptionConfig,
     };
+    use crate::core::MomoCore;
     use axum::body::Body;
     use axum::http::Request;
     use axum::http::StatusCode;
     use axum::{middleware, routing::get, Router};
+    use std::sync::Arc;
     use tower::ServiceExt;
 
     fn make_config(api_keys: Vec<String>) -> Config {
@@ -160,8 +161,8 @@ mod tests {
             crate::transcription::TranscriptionProvider::new(&config.transcription).unwrap();
         let llm = crate::llm::LlmProvider::new(config.llm.as_ref());
 
-        let state = AppState::new(
-            config,
+        let state = MomoCore::new(
+            Arc::new(config),
             db.clone(),
             db,
             embeddings,

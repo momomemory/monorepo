@@ -1,0 +1,4 @@
+[env]
+# whisper-rs-sys bindgen output is currently unstable on this toolchain, but the
+# crate ships bundled bindings that match the vendored whisper.cpp version.
+WHISPER_DONT_GENERATE_BINDINGS = "1"

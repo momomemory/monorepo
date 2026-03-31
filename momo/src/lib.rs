@@ -1,11 +1,16 @@
+#[cfg(feature = "http")]
 pub mod api;
 pub mod config;
+pub mod core;
 pub mod db;
 pub mod embeddings;
+pub mod engine;
 pub mod error;
 pub mod intelligence;
 pub mod llm;
+#[cfg(feature = "http")]
 pub mod mcp;
+pub mod migration;
 pub mod models;
 pub mod ocr;
 pub mod processing;

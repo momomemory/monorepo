@@ -1,8 +1,13 @@
-use std::io::{self, Write};
-
 use crate::db::traits::DatabaseBackend;
 use crate::embeddings::EmbeddingProvider;
 use crate::error::Result;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DimensionMismatchPolicy {
+    Reject,
+    Rebuild,
+    Prompt,
+}
 
 pub enum MigrationDecision {
     NotNeeded,
@@ -12,11 +17,11 @@ pub enum MigrationDecision {
 
 /// Check if embedding dimensions are compatible with the database.
 ///
-/// If dimensions mismatch, either prompt the user or check force_rebuild flag.
+/// If dimensions mismatch, handle it according to the selected policy.
 pub async fn check_dimension_compatibility(
     db: &dyn DatabaseBackend,
     provider: &EmbeddingProvider,
-    force_rebuild: bool,
+    policy: DimensionMismatchPolicy,
 ) -> Result<MigrationDecision> {
     let model_dimensions = provider.dimensions();
     let stored_dimensions = db.get_embedding_dimensions().await?;
@@ -41,27 +46,17 @@ pub async fn check_dimension_compatibility(
                 model_dimensions
             );
 
-            if force_rebuild {
-                tracing::info!("Force rebuild flag set, proceeding with migration");
-                return Ok(MigrationDecision::Approved);
-            }
-
-            print!(
-                "\nEmbedding dimension mismatch detected!\n\
-                 Database: {db_dims} dimensions\n\
-                 Model: {model_dimensions} dimensions\n\n\
-                 This requires re-embedding all documents.\n\
-                 Proceed with migration? [y/N]: "
-            );
-            io::stdout().flush()?;
-
-            let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
-
-            if input.trim().to_lowercase() == "y" || input.trim().to_lowercase() == "yes" {
-                Ok(MigrationDecision::Approved)
-            } else {
-                Ok(MigrationDecision::Rejected)
+            match policy {
+                DimensionMismatchPolicy::Rebuild => {
+                    tracing::info!("Dimension mismatch policy is rebuild, proceeding with migration");
+                    Ok(MigrationDecision::Approved)
+                }
+                DimensionMismatchPolicy::Reject => Ok(MigrationDecision::Rejected),
+                DimensionMismatchPolicy::Prompt => {
+                    Err(crate::error::MomoError::Internal(
+                        "Interactive embedding migration prompts are no longer supported; use an explicit migration policy".to_string(),
+                    ))
+                }
             }
         }
     }

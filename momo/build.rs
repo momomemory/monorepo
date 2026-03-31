@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
+    if env::var_os("CARGO_FEATURE_HTTP").is_none() {
+        return;
+    }
+
     println!("cargo:rerun-if-changed=frontend/src");
     println!("cargo:rerun-if-changed=frontend/index.html");
     println!("cargo:rerun-if-changed=frontend/package.json");

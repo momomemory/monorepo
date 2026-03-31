@@ -102,6 +102,7 @@ For detailed documentation, see the [docs](./docs/README.md) directory.
 - [API Reference](./docs/api.md)
 - [MCP Guide](./docs/mcp.md)
 - [Self-Hosting Guide](./docs/self-hosting.md)
+- [C FFI README](./ffi/README.md)
 
 ## SDKs
 

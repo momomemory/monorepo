@@ -8,6 +8,7 @@ use crate::error::{MomoError, Result};
 use super::api::TranscriptionApiClient;
 
 enum TranscriptionBackend {
+    #[cfg(feature = "local-transcription")]
     Local {
         whisper: super::whisper::WhisperContext,
     },
@@ -29,17 +30,29 @@ impl TranscriptionProvider {
         let (provider, _model_name) = parse_provider_model(&config.model);
 
         let backend = if provider.eq_ignore_ascii_case("local") {
-            // Local Whisper backend
-            match super::whisper::WhisperContext::new(config) {
-                Ok(whisper) => {
-                    info!("Local Whisper backend initialized");
-                    TranscriptionBackend::Local { whisper }
+            #[cfg(feature = "local-transcription")]
+            {
+                // Local Whisper backend
+                match super::whisper::WhisperContext::new(config) {
+                    Ok(whisper) => {
+                        info!("Local Whisper backend initialized");
+                        TranscriptionBackend::Local { whisper }
+                    }
+                    Err(e) => {
+                        let reason = format!("Whisper backend unavailable: {e}");
+                        warn!("{}", reason);
+                        TranscriptionBackend::Unavailable { reason }
+                    }
                 }
-                Err(e) => {
-                    let reason = format!("Whisper backend unavailable: {e}");
-                    warn!("{}", reason);
-                    TranscriptionBackend::Unavailable { reason }
-                }
+            }
+
+            #[cfg(not(feature = "local-transcription"))]
+            {
+                let reason =
+                    "Local Whisper backend disabled at compile time (enable the `local-transcription` feature)"
+                        .to_string();
+                warn!("{}", reason);
+                TranscriptionBackend::Unavailable { reason }
             }
         } else {
             // API backend (openai, openrouter, etc.)
@@ -93,6 +106,7 @@ impl TranscriptionProvider {
 
     async fn transcribe_internal(&self, audio_bytes: &[u8]) -> Result<String> {
         match &self.backend {
+            #[cfg(feature = "local-transcription")]
             TranscriptionBackend::Local { whisper } => {
                 use super::preprocessing::AudioPreprocessor;
 
@@ -115,6 +129,7 @@ impl TranscriptionProvider {
 impl Clone for TranscriptionProvider {
     fn clone(&self) -> Self {
         match &self.backend {
+            #[cfg(feature = "local-transcription")]
             TranscriptionBackend::Local { whisper } => Self {
                 backend: TranscriptionBackend::Local {
                     whisper: whisper.clone(),

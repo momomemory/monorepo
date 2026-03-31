@@ -4,7 +4,6 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use nanoid::nanoid;
 
-use crate::config::Config;
 use crate::db::DatabaseBackend;
 use crate::embeddings::EmbeddingProvider;
 use crate::error::{MomoError, Result};
@@ -23,20 +22,20 @@ pub struct MemoryService {
     db: Arc<dyn DatabaseBackend>,
     embeddings: EmbeddingProvider,
     default_space_id: String,
-    profile_generator: ProfileGenerator,
+    llm: LlmProvider,
 }
 
 impl MemoryService {
-    pub fn new(db: Arc<dyn DatabaseBackend>, embeddings: EmbeddingProvider) -> Self {
-        let llm_config = Config::from_env().llm;
-        let llm_provider = LlmProvider::new(llm_config.as_ref());
-        let profile_generator = ProfileGenerator::new(llm_provider);
-
+    pub fn new(
+        db: Arc<dyn DatabaseBackend>,
+        embeddings: EmbeddingProvider,
+        llm: LlmProvider,
+    ) -> Self {
         Self {
             db,
             embeddings,
             default_space_id: "default".to_string(),
-            profile_generator,
+            llm,
         }
     }
 
@@ -133,7 +132,7 @@ impl MemoryService {
             .update_memory_embedding(&memory.id, &embedding)
             .await?;
 
-        let llm_config = Config::from_env().llm;
+        let llm_config = self.llm.config().cloned();
         if llm_config
             .as_ref()
             .map(|config| config.enable_auto_relations)
@@ -396,6 +395,7 @@ impl MemoryService {
 
         let want_narrative = req.generate_narrative.unwrap_or(false);
         let want_compact = req.compact.unwrap_or(false);
+        let profile_generator = ProfileGenerator::new(self.llm.clone());
 
         let all_facts: Vec<&str> = profile
             .static_facts
@@ -412,10 +412,7 @@ impl MemoryService {
             let narrative_missing = cached.as_ref().and_then(|c| c.narrative.as_ref()).is_none();
 
             if is_stale || narrative_missing {
-                let narrative = self
-                    .profile_generator
-                    .generate_narrative(&all_facts)
-                    .await?;
+                let narrative = profile_generator.generate_narrative(&all_facts).await?;
                 if !narrative.is_empty() {
                     new_narrative = Some(narrative);
                     cache_dirty = true;
@@ -427,7 +424,7 @@ impl MemoryService {
             let summary_missing = cached.as_ref().and_then(|c| c.summary.as_ref()).is_none();
 
             if is_stale || summary_missing {
-                let compacted = self.profile_generator.compact_facts(&all_facts).await?;
+                let compacted = profile_generator.compact_facts(&all_facts).await?;
                 if !compacted.is_empty() {
                     let summary_json = serde_json::to_string(&compacted)?;
                     new_summary = Some(summary_json);
@@ -490,13 +487,11 @@ impl MemoryService {
 
 impl Clone for MemoryService {
     fn clone(&self) -> Self {
-        let llm_config = Config::from_env().llm;
-        let llm_provider = LlmProvider::new(llm_config.as_ref());
         Self {
             db: self.db.clone(),
             embeddings: self.embeddings.clone(),
             default_space_id: self.default_space_id.clone(),
-            profile_generator: ProfileGenerator::new(llm_provider),
+            llm: self.llm.clone(),
         }
     }
 }
@@ -557,20 +552,17 @@ async fn build_heuristic_context(
 
 #[cfg(test)]
 mod tests {
-    use crate::config::Config;
-
     #[test]
     fn test_relationship_detection_enabled_when_config_set() {
-        let config = Config::from_env();
-        let should_detect = config
-            .llm
-            .as_ref()
+        let llm = crate::llm::LlmProvider::unavailable("missing");
+        let should_detect = llm
+            .config()
             .map(|c| c.enable_auto_relations)
             .unwrap_or(false);
 
         assert!(
             !should_detect,
-            "Relationship detection should be disabled by default without LLM config"
+            "Relationship detection should be disabled without LLM config"
         );
     }
 

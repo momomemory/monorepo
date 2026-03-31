@@ -7,18 +7,20 @@ pub mod router;
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
     use crate::api::routes::create_router;
-    use crate::api::state::AppState;
     use crate::config::{
         Config, DatabaseConfig, EmbeddingsConfig, InferenceConfig, McpConfig, MemoryConfig,
         OcrConfig, ProcessingConfig, ServerConfig, TranscriptionConfig,
     };
+    use crate::core::MomoCore;
 
-    async fn test_state(api_keys: Vec<String>) -> AppState {
+    async fn test_state(api_keys: Vec<String>) -> MomoCore {
         let config = Config {
             server: ServerConfig {
                 host: "127.0.0.1".to_string(),
@@ -81,8 +83,8 @@ mod tests {
             crate::transcription::TranscriptionProvider::new(&config.transcription).unwrap();
         let llm = crate::llm::LlmProvider::new(config.llm.as_ref());
 
-        AppState::new(
-            config,
+        MomoCore::new(
+            Arc::new(config),
             db.clone(),
             db,
             embeddings,

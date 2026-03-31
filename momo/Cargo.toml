@@ -17,6 +17,11 @@ path = "src/lib.rs"
 [[bin]]
 name = "momo"
 path = "src/main.rs"
+required-features = ["http"]
+
+[workspace]
+members = ["ffi"]
+default-members = ["."]
 
 [dependencies]
 # Web Framework
@@ -122,7 +127,7 @@ leptess = "0.14"
 image = "0.25"
 
 # Audio transcription
-whisper-rs = "0.15"
+whisper-rs = { version = "0.15", optional = true }
 symphonia = { version = "0.5", features = ["mp3", "isomp4", "wav", "pcm"] }
 rubato = "0.16"
 
@@ -154,8 +159,10 @@ wiremock = "0.6"
 serial_test = "0.5"
 
 [features]
-default = ["local-embeddings"]
+default = ["local-embeddings", "local-transcription", "http"]
+http = []
 local-embeddings = []
+local-transcription = ["dep:whisper-rs"]
 openai-embeddings = []
 
 [profile.release]

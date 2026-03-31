@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 
@@ -43,7 +43,7 @@ fn parse_domain_models() -> HashMap<String, String> {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub server: ServerConfig,
     pub mcp: McpConfig,
@@ -57,14 +57,14 @@ pub struct Config {
     pub reranker: Option<RerankerConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub api_keys: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct McpConfig {
     pub enabled: bool,
     pub path: String,
@@ -75,21 +75,21 @@ pub struct McpConfig {
     pub oauth_authorization_server: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DatabaseConfig {
     pub url: String,
     pub auth_token: Option<String>,
     pub local_path: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EmbeddingsConfig {
     pub model: String,
     pub dimensions: usize,
     pub batch_size: usize,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OcrConfig {
     pub model: String,
     pub api_key: Option<String>,
@@ -100,7 +100,7 @@ pub struct OcrConfig {
     pub min_image_dimension: u32,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TranscriptionConfig {
     pub model: String,
     pub api_key: Option<String>,
@@ -112,7 +112,7 @@ pub struct TranscriptionConfig {
 }
 
 /// LLM configuration for chat/completion models
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LlmConfig {
     pub model: String,
     pub api_key: Option<String>,
@@ -133,7 +133,7 @@ pub struct LlmConfig {
 }
 
 /// Reranker configuration for improving search result ordering
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RerankerConfig {
     pub enabled: bool,
     pub model: String,
@@ -169,13 +169,13 @@ impl Default for TranscriptionConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProcessingConfig {
     pub chunk_size: usize,
     pub chunk_overlap: usize,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MemoryConfig {
     pub episode_decay_days: f64,
     pub episode_decay_factor: f64,
@@ -187,7 +187,7 @@ pub struct MemoryConfig {
 }
 
 /// Configuration for the background inference engine that derives new memories
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InferenceConfig {
     pub enabled: bool,
     pub interval_secs: u64,

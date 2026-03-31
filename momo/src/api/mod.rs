@@ -1,3 +1,4 @@
+mod error_response;
 mod extractors;
 mod frontend;
 mod routes;
