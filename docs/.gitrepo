@@ -6,6 +6,7 @@
 [subrepo]
 	remote = git@github.com:momomemory/docs.git
 	branch = main
-	commit = 
+	commit = 38d5a9a0bc367325d49c8a6729c0b480ea64fc44
 	method = merge
 	cmdver = 0.4.9
+	parent = 4b4398acfe06a631fe12f824d04f5309a91ef56e
