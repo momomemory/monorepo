@@ -1,0 +1,40 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+const sidebar = [
+  {
+    label: 'Getting Started',
+    items: [
+      { label: 'Overview', link: '/docs/' },
+      { label: 'Self-Hosting', slug: 'guides/self-hosting' },
+      { label: 'MCP Guide', slug: 'guides/mcp' },
+    ],
+  },
+  {
+    label: 'Reference',
+    items: [{ label: 'API Reference', slug: 'reference/api' }],
+  },
+  {
+    label: 'Project',
+    items: [{ label: 'Release Strategy', slug: 'project/release-strategy' }],
+  },
+];
+---
+
+<StarlightPage
+  frontmatter={{
+    title: 'Momo Docs',
+    description: 'Documentation for setup, integrations, and API usage.',
+  }}
+  sidebar={sidebar}
+>
+  <p>Momo is a self-hostable AI memory system built as a single Rust binary.</p>
+
+  <p>Use the links in the sidebar to jump into the current documentation sections.</p>
+
+  <ul>
+    <li><a href="/guides/self-hosting/">Self-hosting guide</a></li>
+    <li><a href="/guides/mcp/">MCP guide</a></li>
+    <li><a href="/reference/api/">API reference</a></li>
+  </ul>
+</StarlightPage>

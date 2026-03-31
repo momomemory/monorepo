@@ -1,0 +1,557 @@
+---
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Momo</title>
+    <meta
+      name="description"
+      content="Self-hostable AI memory for agents. A single Rust binary with LibSQL vector search and local-first embeddings."
+    />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=IBM+Plex+Mono:wght@300;400&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Inline theme init: must run before CSS to avoid flash of wrong theme -->
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem('starlight-theme');
+        var theme =
+          stored === 'dark' || stored === 'light'
+            ? stored
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="layout">
+
+      <nav class="nav">
+        <span class="wordmark">momo</span>
+        <div class="nav-right">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="theme-toggle"
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            <!-- Sun: shown in dark mode -->
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"></path>
+            </svg>
+            <!-- Moon: shown in light mode -->
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <a
+            href="https://github.com/momomemory/momo"
+            class="github-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub<span aria-hidden="true" class="ext-arrow">↗</span>
+          </a>
+        </div>
+      </nav>
+
+      <main class="main">
+
+        <header class="hero">
+          <p class="hero-label">AI memory system</p>
+          <h1 class="hero-heading">Momo</h1>
+          <p class="hero-specs">
+            <span>Single binary</span>
+            <span class="sep" aria-hidden="true">·</span>
+            <span>Embeddable</span>
+            <span class="sep" aria-hidden="true">·</span>
+            <span>LibSQL vectors</span>
+            <span class="sep" aria-hidden="true">·</span>
+            <span>Local-first</span>
+          </p>
+          <p class="hero-desc">
+            A self-hostable Rust service for long-term AI agent memory.
+            Persistent storage, hybrid search, and a built-in web console —
+            no third-party dependencies required.
+          </p>
+          <a href="/docs/" class="hero-cta">
+            Read the documentation <span aria-hidden="true">→</span>
+          </a>
+        </header>
+
+        <div class="divider" role="separator"></div>
+
+        <section class="links-section" aria-label="Documentation sections">
+          <div class="links-column">
+            <h2 class="links-label">Getting started</h2>
+            <ul class="links-list" role="list">
+              <li>
+                <a href="/docs/" class="doc-link">
+                  <span>Overview</span>
+                  <span class="arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a href="/guides/self-hosting/" class="doc-link">
+                  <span>Self-hosting</span>
+                  <span class="arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a href="/guides/mcp/" class="doc-link">
+                  <span>MCP integration</span>
+                  <span class="arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="links-column">
+            <h2 class="links-label">Reference</h2>
+            <ul class="links-list" role="list">
+              <li>
+                <a href="/reference/api/" class="doc-link">
+                  <span>API reference</span>
+                  <span class="arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a href="/project/release-strategy/" class="doc-link">
+                  <span>Release strategy</span>
+                  <span class="arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+      </main>
+
+      <footer class="footer">
+        <span>Open source. MIT licensed.</span>
+        <a
+          href="https://github.com/momomemory/momo"
+          class="footer-repo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          momomemory/momo
+        </a>
+      </footer>
+
+    </div>
+  </body>
+</html>
+
+<style>
+  /* ----------------------------------------------------------------
+     Custom properties — light mode (default)
+  ---------------------------------------------------------------- */
+  :root {
+    --bg:        #FAFAF8;
+    --fg:        #141414;
+    --fg-2:      #8C8B82;
+    --border:    #E5E4DF;
+
+    --ff-serif:  'Newsreader', 'Georgia', 'Times New Roman', serif;
+    --ff-sans:   -apple-system, 'Helvetica Neue', system-ui, sans-serif;
+    --ff-mono:   'IBM Plex Mono', 'SF Mono', 'Menlo', 'Courier New', monospace;
+
+    --max-w:     960px;
+    --pad-x:     clamp(1.5rem, 6vw, 5.5rem);
+  }
+
+  /* Dark mode via system preference */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:     #141414;
+      --fg:     #F2F1EC;
+      --fg-2:   #8C8B82;
+      --border: rgba(242, 241, 236, 0.12);
+    }
+  }
+
+  /* Dark mode via explicit user selection (overrides media query) */
+  [data-theme='dark'] {
+    --bg:     #141414;
+    --fg:     #F2F1EC;
+    --fg-2:   #8C8B82;
+    --border: rgba(242, 241, 236, 0.12);
+  }
+
+  /* Light mode via explicit user selection */
+  [data-theme='light'] {
+    --bg:     #FAFAF8;
+    --fg:     #141414;
+    --fg-2:   #8C8B82;
+    --border: #E5E4DF;
+  }
+
+  /* ----------------------------------------------------------------
+     Reset
+  ---------------------------------------------------------------- */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--ff-sans);
+    line-height: 1.6;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Ambient depth — barely perceptible top vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 100% 60% at 50% -5%,
+      rgba(0, 0, 0, 0.03) 0%,
+      transparent 65%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ----------------------------------------------------------------
+     Page layout
+  ---------------------------------------------------------------- */
+  .layout {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding-inline: var(--pad-x);
+  }
+
+  /* ----------------------------------------------------------------
+     Navigation
+  ---------------------------------------------------------------- */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1.875rem;
+    border-bottom: 1px solid var(--border);
+    animation: appear 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .wordmark {
+    font-family: var(--ff-mono);
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    color: var(--fg);
+    user-select: none;
+  }
+
+  /* Theme toggle button */
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--fg-2);
+    cursor: pointer;
+    transition: color 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .theme-toggle:hover {
+    color: var(--fg);
+  }
+
+  .icon-sun,
+  .icon-moon {
+    display: none;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Show sun in dark mode */
+  [data-theme='dark'] .icon-sun { display: block; }
+  /* Show moon in light mode */
+  [data-theme='light'] .icon-moon { display: block; }
+
+  /* System preference fallbacks (before JS sets data-theme) */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .icon-sun { display: block; }
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) .icon-moon { display: block; }
+  }
+
+  .github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+    font-size: 0.8125rem;
+    color: var(--fg-2);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    transition: color 0.18s ease;
+  }
+
+  .github-link:hover {
+    color: var(--fg);
+  }
+
+  .ext-arrow {
+    font-size: 0.7em;
+    opacity: 0.65;
+  }
+
+  /* ----------------------------------------------------------------
+     Main
+  ---------------------------------------------------------------- */
+  .main {
+    padding-block: clamp(4.5rem, 13vh, 9rem);
+  }
+
+  /* ----------------------------------------------------------------
+     Hero
+  ---------------------------------------------------------------- */
+  .hero {
+    animation: appear 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+  }
+
+  .hero-label {
+    font-family: var(--ff-mono);
+    font-size: 0.6875rem;
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-2);
+    margin-bottom: 1.75rem;
+  }
+
+  .hero-heading {
+    font-family: var(--ff-serif);
+    font-style: italic;
+    font-size: clamp(5.5rem, 15vw, 10.5rem);
+    font-weight: 300;
+    line-height: 0.88;
+    letter-spacing: -0.035em;
+    color: var(--fg);
+    margin-bottom: 2rem;
+  }
+
+  .hero-specs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.625rem;
+    font-family: var(--ff-mono);
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--fg-2);
+    letter-spacing: 0.04em;
+    margin-bottom: 1.875rem;
+  }
+
+  .sep {
+    opacity: 0.35;
+  }
+
+  .hero-desc {
+    font-size: 1rem;
+    line-height: 1.72;
+    color: var(--fg-2);
+    max-width: 50ch;
+    margin-bottom: 2.25rem;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.9375rem;
+    color: var(--fg);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.15rem;
+    letter-spacing: 0.005em;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .hero-cta:hover {
+    border-color: var(--fg);
+  }
+
+  /* ----------------------------------------------------------------
+     Divider
+  ---------------------------------------------------------------- */
+  .divider {
+    height: 1px;
+    background-color: var(--border);
+    margin-block: clamp(2.75rem, 7vh, 5rem);
+    animation: appear 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+  }
+
+  /* ----------------------------------------------------------------
+     Doc links
+  ---------------------------------------------------------------- */
+  .links-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(2rem, 5vw, 5rem);
+    animation: appear 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+  }
+
+  .links-label {
+    font-family: var(--ff-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-2);
+    margin-bottom: 1.25rem;
+  }
+
+  .links-list {
+    list-style: none;
+  }
+
+  .links-list li {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .links-list li:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .doc-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 0.9rem;
+    font-size: 0.9375rem;
+    color: var(--fg);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .doc-link:hover {
+    color: var(--fg-2);
+  }
+
+  .arrow {
+    font-size: 0.875rem;
+    color: var(--fg-2);
+    transition:
+      transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+      color 0.15s ease;
+  }
+
+  .doc-link:hover .arrow {
+    transform: translateX(5px);
+    color: var(--fg);
+  }
+
+  /* ----------------------------------------------------------------
+     Footer
+  ---------------------------------------------------------------- */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8125rem;
+    color: var(--fg-2);
+    animation: appear 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+  }
+
+  .footer-repo {
+    font-family: var(--ff-mono);
+    font-size: 0.75rem;
+    color: var(--fg-2);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: color 0.18s ease;
+  }
+
+  .footer-repo:hover {
+    color: var(--fg);
+  }
+
+  /* ----------------------------------------------------------------
+     Animations
+  ---------------------------------------------------------------- */
+  @keyframes appear {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ----------------------------------------------------------------
+     Responsive
+  ---------------------------------------------------------------- */
+  @media (max-width: 600px) {
+    .links-section {
+      grid-template-columns: 1fr;
+    }
+
+    .footer {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+</style>
+
+<script>
+  const storageKey = 'starlight-theme';
+  const btn = document.getElementById('theme-toggle');
+
+  btn?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') as 'dark' | 'light' | null;
+    const isDark =
+      current === 'dark' ||
+      (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isDark ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem(storageKey, next);
+  });
+</script>
