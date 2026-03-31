@@ -1,0 +1,110 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+---
+<Default {...Astro.props} />
+
+<!-- Mermaid pan/zoom: bundled by Astro, runs after DOM ready -->
+<script>
+  import Panzoom from '@panzoom/panzoom';
+
+  function setupPanzoom(pre: Element, svg: SVGSVGElement) {
+    if ((pre as HTMLElement).dataset.panzoom) return;
+    (pre as HTMLElement).dataset.panzoom = 'true';
+
+    // Make the pre the clipping viewport
+    (pre as HTMLElement).style.overflow = 'hidden';
+    (pre as HTMLElement).style.cursor = 'grab';
+    (pre as HTMLElement).style.userSelect = 'none';
+    (pre as HTMLElement).style.touchAction = 'none';
+    (pre as HTMLElement).style.position = 'relative';
+
+    const pz = Panzoom(svg, {
+      maxScale: 8,
+      minScale: 0.25,
+      contain: 'outside',
+      canvas: true,
+    });
+
+    // Scroll-wheel zoom
+    pre.addEventListener('wheel', (e) => {
+      pz.zoomWithWheel(e as WheelEvent);
+    });
+
+    // Active cursor while dragging
+    pre.addEventListener('mousedown', () => {
+      (pre as HTMLElement).style.cursor = 'grabbing';
+    });
+    window.addEventListener('mouseup', () => {
+      (pre as HTMLElement).style.cursor = 'grab';
+    });
+
+    // Reset button
+    const btn = document.createElement('button');
+    btn.className = 'mermaid-reset-btn';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Reset diagram view');
+    btn.title = 'Reset view';
+    btn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+    `;
+    btn.addEventListener('click', () => pz.reset({ animate: true }));
+    pre.appendChild(btn);
+
+    // Hint overlay (fades after first interaction)
+    const hint = document.createElement('span');
+    hint.className = 'mermaid-hint';
+    hint.textContent = 'scroll to zoom · drag to pan';
+    pre.appendChild(hint);
+
+    const removeHint = () => {
+      hint.classList.add('mermaid-hint--gone');
+      pre.removeEventListener('wheel', removeHint);
+      pre.removeEventListener('mousedown', removeHint);
+    };
+    pre.addEventListener('wheel', removeHint, { once: true });
+    pre.addEventListener('mousedown', removeHint, { once: true });
+  }
+
+  function initAll() {
+    document.querySelectorAll<SVGSVGElement>('pre.mermaid[data-processed] svg').forEach((svg) => {
+      const pre = svg.closest('pre.mermaid');
+      if (pre) setupPanzoom(pre, svg);
+    });
+  }
+
+  // Watch for mermaid async rendering (it sets data-processed on the pre)
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node instanceof SVGElement && node.tagName === 'svg') {
+          const pre = node.closest('pre.mermaid');
+          if (pre) setupPanzoom(pre, node as SVGSVGElement);
+        }
+      }
+      if (
+        m.type === 'attributes' &&
+        m.attributeName === 'data-processed' &&
+        m.target instanceof Element &&
+        m.target.matches('pre.mermaid')
+      ) {
+        const svg = m.target.querySelector<SVGSVGElement>('svg');
+        if (svg) setupPanzoom(m.target, svg);
+      }
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initAll();
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-processed'],
+    });
+  });
+</script>

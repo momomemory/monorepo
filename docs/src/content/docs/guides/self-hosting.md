@@ -3,40 +3,7 @@ title: Self-Hosting
 description: Installation, configuration, and deployment instructions for Momo.
 ---
 
-# Self-Hosting Momo
-
-Momo is a self-hostable AI memory system designed to be a single binary, 100% environment-variable configured solution for personal or organizational memory.
-
-## Table of Contents
-
-1. [Architecture](#architecture)
-2. [Prerequisites](#prerequisites)
-3. [Installation](#installation)
-   - [From Source](#from-source)
-   - [Docker](#docker)
-4. [Running](#running)
-5. [Configuration](#configuration)
-   - [Server](#server)
-   - [MCP (Built-in)](#mcp-built-in)
-   - [Database](#database)
-   - [Embeddings](#embeddings)
-   - [Processing](#processing)
-   - [Transcription](#transcription)
-   - [Memory & Decay](#memory--decay)
-   - [Reranking](#reranking)
-   - [LLM Provider](#llm-provider)
-   - [OCR](#ocr)
-   - [Logging](#logging)
-6. [Models & Providers](#models--providers)
-   - [Local Embedding Models](#local-embedding-models)
-   - [External Embedding Providers](#external-embedding-providers)
-   - [OCR Providers](#ocr-providers)
-   - [Transcription Providers](#transcription-providers)
-7. [Features & Management](#features--management)
-   - [Content Types](#content-types)
-   - [Changing Embedding Models](#changing-embedding-models)
-   - [Contradiction Detection](#contradiction-detection)
-   - [Graceful Degradation](#graceful-degradation)
+Momo is a self-hostable AI memory system designed to run as a single binary with environment-variable-based configuration.
 
 ---
 
@@ -123,19 +90,51 @@ docker logs -f momo
 docker stop momo && docker rm momo
 ```
 
-```bash
-# Optional: build locally instead of using GHCR
-docker build -t momo .
-docker run --name momo -d --restart unless-stopped -p 3000:3000 -e MOMO_API_KEYS=dev-key -v momo-data:/data momo
-```
-
 **Note:** The `/data` volume stores the database. Using the named volume `momo-data` keeps data across container restarts/redeploys.
+
+### Using Just (Development)
+
+The monorepo includes a `justfile` for common tasks:
+
+```bash
+# Development server (backend + frontend with hot reload)
+just dev
+
+# Backend only (requires cargo-watch)
+just dev-backend
+
+# Frontend only (requires Bun)
+just dev-frontend
+
+# Debug/trace logging
+just dev-debug      # RUST_LOG=momo=debug
+just dev-trace      # RUST_LOG=momo=trace
+
+# Build release binary
+just build-release
+
+# Run tests
+just test
+
+# Lint and format
+just fmt
+just lint
+
+# Full CI check
+just ci
+```
 
 ---
 
 ## Running
 
-Momo is configured entirely via environment variables.
+Momo is configured entirely via environment variables. When running, three interfaces are available:
+
+| Interface | Path | Description |
+|-----------|------|-------------|
+| Web Console | `/` | Built-in Preact frontend for browsing memories and documents |
+| REST API | `/api/v1` | Full REST API for integration |
+| MCP | `/mcp` (configurable) | Model Context Protocol endpoint |
 
 ```bash
 # Running with default settings (creates momo.db in current directory)
@@ -145,11 +144,44 @@ Momo is configured entirely via environment variables.
 DATABASE_URL=file:my-memory.db MOMO_PORT=8080 ./target/release/momo
 ```
 
+After starting, open `http://localhost:3000` to access the web console.
+
+---
+
+## Embedded Use (C FFI)
+
+Momo also ships an embedded C FFI in `momo/ffi` for applications that want to link the engine directly instead of talking to the HTTP server.
+
+Build it from `momo/`:
+
+```bash
+cargo build -p momo-ffi
+```
+
+This produces:
+
+- `target/debug/libmomo_ffi.dylib`
+- `target/debug/libmomo_ffi.a`
+- `ffi/include/momo.h`
+
+The included C example lives at `momo/ffi/examples/c` and shows the minimal lifecycle:
+
+1. Create an engine with `momo_engine_new`
+2. Call JSON APIs such as `momo_engine_create_memory_json`
+3. Free returned strings with `momo_string_free`
+4. Free the engine with `momo_engine_free`
+
+If you are using the FFI instead of REST, see [Embedded C FFI Reference](/reference/ffi) for exported functions, JSON request/response shapes, worker behavior, and loader-path notes.
+
 ---
 
 ## Configuration
 
 Momo follows a `provider/model` string format for external services (Embeddings, LLM, OCR, Transcription).
+
+For a complete reference of all environment variables organized by concern, see [Configuration Reference](/reference/configuration).
+
+If you are embedding Momo through the C FFI, the engine uses this same configuration when `momo_engine_new` is called with `config_json = NULL`.
 
 ### Server
 
@@ -174,8 +206,8 @@ Momo follows a `provider/model` string format for external services (Embeddings,
 Notes:
 
 - MCP auth keys come from `MOMO_API_KEYS`.
-- When `MOMO_MCP_REQUIRE_AUTH=true` and no API keys are configured, MCP requests are rejected.
-- Full protocol usage and manual examples are documented in [MCP Guide](./mcp.md).
+- When `MOMO_MCP_REQUIRE_AUTH=true` and no API keys are configured, MCP requests return `401 Unauthorized`.
+- Full protocol usage and manual examples are documented in [MCP Guide](/guides/mcp).
 
 ### Database
 
@@ -204,11 +236,12 @@ Notes:
 
 ### Processing
 
-| Variable             | Description               | Default           |
-| -------------------- | ------------------------- | ----------------- |
-| `CHUNK_SIZE`         | Chunk size in tokens      | `512`             |
-| `CHUNK_OVERLAP`      | Overlap between chunks    | `50`              |
-| `MAX_CONTENT_LENGTH` | Max content size in bytes | `10000000` (10MB) |
+| Variable        | Description            | Default |
+| --------------- | ---------------------- | ------- |
+| `CHUNK_SIZE`    | Chunk size in tokens   | `512`   |
+| `CHUNK_OVERLAP` | Overlap between chunks | `50`    |
+
+**Note:** File uploads are limited to 25MB (hardcoded).
 
 ### Transcription
 
@@ -239,7 +272,6 @@ Notes:
 
 - `RERANK_ENABLED`: Enable reranking (opt-in) (default: `false`)
 - `RERANK_MODEL`: Reranker model (default: `bge-reranker-base`)
-- `RERANK_TOP_K`: Number of results to rerank (default: `100`)
 
 ### LLM Provider
 
@@ -312,8 +344,8 @@ Momo automatically detects and processes:
 
 If you change your embedding model, Momo will detect a dimension mismatch at startup.
 
-- **Interactive**: You will be prompted to re-embed your data.
-- **Non-interactive**: Use the `--rebuild-embeddings` flag.
+- **Without flags**: Startup will fail with an error if dimensions don't match.
+- **With `--rebuild-embeddings` flag**: Documents are queued for reprocessing with the new model.
   Migration runs in the background; search continues to function with partial results.
 
 ### Contradiction Detection
@@ -335,4 +367,4 @@ Momo is designed to be functional even without external dependencies:
 
 ---
 
-For detailed API information, see [API Reference](./api.md). For MCP integration, see [MCP Guide](./mcp.md).
+For detailed API information, see [API Reference](/reference/api). For MCP integration, see [MCP Guide](/guides/mcp).

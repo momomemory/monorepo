@@ -373,3 +373,103 @@ starlight-toc a[aria-current='true'] {
 .expressive-code .frame pre {
   border: none;
 }
+
+/* Override EC code background to match site palette */
+:root .expressive-code .ec-line,
+:root .expressive-code pre {
+  background-color: #1e1d1b !important;
+}
+
+:root[data-theme='light'] .expressive-code .ec-line,
+:root[data-theme='light'] .expressive-code pre {
+  background-color: #F2F1EC !important;
+}
+
+/* ── Mermaid diagrams ────────────────────────────────────── */
+
+/* Container: full-width, centered, subtle border */
+pre.mermaid,
+.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--sl-color-gray-1);
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 4px;
+  padding: 2rem 1.5rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+/* SVG output: remove hard-coded background from mermaid SVGs */
+pre.mermaid svg,
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent !important;
+}
+
+/* Light mode: use lighter surface */
+:root[data-theme='light'] pre.mermaid,
+:root[data-theme='light'] .mermaid {
+  background: var(--sl-color-gray-1);
+}
+
+/* While diagram is still loading (raw text state), hide it */
+pre.mermaid:not([data-processed]) {
+  font-size: 0;
+  min-height: 4rem;
+}
+
+/* Pan/zoom reset button */
+.mermaid-reset-btn {
+  position: absolute;
+  bottom: 0.625rem;
+  right: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 4px;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text-accent);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  z-index: 10;
+}
+
+.mermaid-reset-btn:hover {
+  opacity: 1;
+  color: var(--sl-color-text);
+  border-color: var(--sl-color-hairline-shade);
+}
+
+.mermaid-reset-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Scroll/drag hint overlay */
+.mermaid-hint {
+  position: absolute;
+  bottom: 0.625rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--sl-font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--sl-color-text-accent);
+  opacity: 0.5;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.4s ease;
+  z-index: 10;
+}
+
+.mermaid-hint--gone {
+  opacity: 0;
+}

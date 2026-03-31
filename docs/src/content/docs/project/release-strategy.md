@@ -3,148 +3,96 @@ title: Release Strategy
 description: Versioning and release workflow for the Momo server and SDKs.
 ---
 
-# Momo Release Strategy
+This page documents how Momo manages releases, versioning, and artifact publishing.
 
-> Decision document for how Momo manages releases, versioning, and artifact publishing.
+## Monorepo + Mirror Architecture
 
-## Artifacts Published Per Release
+Momo uses a monorepo workflow with git subrepo mirrors:
 
-| Artifact            | Registry                  | Format                     |
-| ------------------- | ------------------------- | -------------------------- |
-| Linux x86_64 binary | GitHub Releases           | `momo-linux-amd64.tar.gz`  |
-| Linux ARM64 binary  | GitHub Releases           | `momo-linux-arm64.tar.gz`  |
-| macOS ARM64 binary  | GitHub Releases           | `momo-darwin-arm64.tar.gz` |
-| Docker image        | `ghcr.io/momomemory/momo` | OCI (linux/amd64)          |
-| SHA256 checksums    | GitHub Releases           | `checksums.sha256`         |
+- **Monorepo** (`momomemory/monorepo`): Contains the entire project history
+- **Server Mirror** (`momomemory/momo`): Core Rust server
+- **SDK Mirror** (`momomemory/sdk-typescript`): TypeScript SDK
+- **Plugin Mirrors** (`momomemory/opencode-momo`, `momomemory/openclaw-momo`, `momomemory/pi-momo`)
 
----
-
-## Options Considered
-
-### Option 1: Tag-Driven Fully Automated Releases
-
-**Trigger:** Push a semver tag (`v*.*.*`).
-
-**Flow:**
-
-```
-git tag v0.2.0
-git push origin v0.2.0
-→ CI builds binaries + Docker image
-→ Creates GitHub Release with assets
-→ Done
-```
-
-**Pros:**
-
-- Zero ceremony — tag and walk away.
-- Deterministic: a tag always produces a release.
-- Easy to automate from scripts or CI bots (e.g., release-please).
-
-**Cons:**
-
-- No gate between "I think this is ready" and "it's live." A bad tag means a bad release.
-- Rollback = delete tag + delete release + push new tag. Messy.
-- No place for human review of the release notes before publish.
-- Accidental tags (typos, wrong branch) produce broken releases.
-
-**Best for:** Solo maintainer projects with strong CI coverage and few consumers.
+Changes are made in the monorepo and pushed to mirrors using `just subrepo-push`.
 
 ---
 
-### Option 2: Manual Dispatch with Inputs
+## Release Commands
 
-**Trigger:** `workflow_dispatch` with version input.
+Use the `justfile` recipes to release components:
 
-**Flow:**
+### Server Release
 
-```
-GitHub Actions UI → "Run workflow"
-→ Enter version: 0.2.0
-→ Optionally toggle "dry run" or "pre-release"
-→ CI builds everything, creates release
+```bash
+just release-momo 0.3.1
 ```
 
-**Pros:**
+This will:
+1. Bump `momo/Cargo.toml` version
+2. Commit and push to monorepo
+3. Push to server mirror (`momomemory/momo`)
+4. Create tag `v0.3.1` on the mirror repo
 
-- Full human control over timing and version.
-- Can add dry-run mode, pre-release flags, target branch selection.
-- No accidental releases from stray tags.
+### SDK Release
 
-**Cons:**
+```bash
+just release-sdk-ts 0.3.0
+```
 
-- Requires visiting the GitHub Actions UI (or `gh workflow run` CLI).
-- Easy to forget steps or mis-type the version.
-- Version in `Cargo.toml` can drift from the dispatch input.
-- Doesn't scale well — every release is a manual ceremony.
+### Plugin Releases
 
-**Best for:** Teams that want explicit approval gates or infrequent releases.
+```bash
+just release-plugin-opencode 0.1.4
+just release-plugin-openclaw 0.1.1
+just release-plugin-pi 0.1.3
+```
 
 ---
 
-### Option 3: Hybrid — Tag-Triggered with Manual Override ✅ RECOMMENDED
+## Published Artifacts
 
-**Triggers:**
+Published artifacts are defined by each mirror repository's release workflow.
 
-1. Push a semver tag (`v*.*.*`) → full automated release.
-2. `workflow_dispatch` with optional version override → same pipeline, manual trigger.
-
-**Flow (typical):**
-
-```
-# Automated path (day-to-day)
-git tag v0.2.0 && git push origin v0.2.0
-→ Full release pipeline runs
-
-# Manual path (hotfix, re-release, dry run)
-gh workflow run release.yml -f version=0.2.1 -f dry_run=true
-→ Same pipeline, human-initiated
-```
-
-**Pros:**
-
-- Fast path for routine releases (just tag).
-- Escape hatch for edge cases (manual dispatch).
-- Single workflow file handles both paths — no duplication.
-- `workflow_dispatch` enables dry runs, pre-release toggles, and testing the pipeline itself.
-- Tag-based triggers integrate cleanly with tools like `release-please`, `cargo-release`, or custom scripts.
-
-**Cons:**
-
-- Slightly more complex workflow YAML (branching on trigger type).
-- Must document both paths so contributors know the options.
-
-**Best for:** Projects expecting growth, multiple contributors, and long-term maintenance.
-
----
-
-## Recommendation: Option 3 (Hybrid)
-
-**Why this wins for Momo:**
-
-1. **Scales with the project.** Today it's a solo maintainer tagging releases. Tomorrow it could be a team with a release manager reviewing changelogs before publish. The hybrid approach supports both without workflow changes.
-
-2. **Testable pipeline.** The `workflow_dispatch` path with `dry_run: true` lets you validate the entire release pipeline without publishing anything. This is critical for a project with complex native deps (Tesseract, Whisper, tree-sitter).
-
-3. **Compatible with automation tools.** When the project grows, adding `release-please` or `cargo-release` is trivial — they create tags, which trigger the existing workflow. No migration needed.
-
-4. **Graceful error recovery.** If a tag-triggered release fails mid-way, you can re-run it manually via dispatch without deleting and re-creating the tag.
-
-5. **Pre-release support.** Tags like `v0.3.0-rc.1` can automatically be marked as pre-releases, giving early adopters access without affecting the `latest` tag.
+- Server mirror releases may attach binaries, checksums, and container images.
+- SDK and plugin mirrors publish npm packages from their own release automation.
+- Check the mirror repository for the exact artifacts produced by a given release.
 
 ---
 
 ## Versioning Policy
 
 - Follow [Semantic Versioning 2.0](https://semver.org/).
-- Source of truth: `Cargo.toml` `version` field.
-- Tags MUST match the Cargo.toml version (the workflow validates this).
-- Pre-release tags (`-alpha`, `-beta`, `-rc.N`) are supported and auto-detected.
+- Source of truth: `Cargo.toml` or `package.json` `version` field.
+- Mirror tags use `v{version}` format (e.g., `v0.3.1`).
+- Pre-release versions (`-alpha`, `-beta`, `-rc.N`) are supported.
 - Docker tag `latest` only updates on stable (non-pre-release) tags.
 
-## Future Enhancements
+---
 
-These are explicitly **not** in the initial workflow but are easy to add later:
+## Mirror Release Flow
+
+Each mirror repo owns its release workflow and is triggered after the `just release-*` command pushes code and creates a `v*` tag on that mirror:
+
+1. **Tag created** via `just release-*` command
+2. **Mirror workflow** runs in the target mirror repository
+3. **Artifacts and publishing** are handled by that mirror's CI configuration
+4. **npm publish** for SDKs and plugins is handled in the mirror repo via OIDC Trusted Publishing
+
+Example for the server:
+```
+just release-momo 0.3.1
+    → updates momo/Cargo.toml
+    → commits "chore(momo): bump version to 0.3.1"
+    → pushes to monorepo
+    → pushes subrepo to momomemory/momo
+    → creates tag v0.3.1 on mirror
+    → mirror CI builds and releases
+```
+
+---
+
+## Future Enhancements
 
 | Enhancement                               | Effort | When to Add                         |
 | ----------------------------------------- | ------ | ----------------------------------- |
@@ -154,7 +102,3 @@ These are explicitly **not** in the initial workflow but are easy to add later:
 | Crates.io publish                         | Low    | If/when the crate becomes a library |
 | Cosign/Sigstore signing                   | Low    | When supply-chain security matters  |
 | SBOM generation                           | Medium | For enterprise/compliance users     |
-
----
-
-_Last updated: 2026-02-08_

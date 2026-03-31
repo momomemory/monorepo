@@ -3,34 +3,15 @@ title: API Reference
 description: REST API v1 endpoints, request formats, and response behavior.
 ---
 
-# Momo V1 REST API Reference
+This reference covers Momo's HTTP REST API for document ingestion, memory extraction, and hybrid search.
 
-Welcome to the Momo API reference. Momo is a self-hostable AI memory system that provides a unified interface for document ingestion, memory extraction, and hybrid search.
-
-## Table of Contents
-
-- [Response Envelope](#response-envelope)
-- [Authentication](#authentication)
-- [Pagination](#pagination)
-- [Error Codes](#error-codes)
-- [ID Formats](#id-formats)
-- [Enums](#enums)
-- [Health & System](#health--system)
-- [MCP (Streamable HTTP)](#mcp-streamable-http)
-- [Documents](#documents)
-- [Ingestions](#ingestions)
-- [Search](#search)
-- [Memories](#memories)
-- [Graph](#graph)
-- [Profile](#profile)
-- [Conversations](#conversations)
-- [Admin](#admin)
+This page covers the HTTP REST API only. The embedded C ABI added under `momo/ffi` is documented separately in [Embedded C FFI Reference](/reference/ffi).
 
 ---
 
 ## Response Envelope
 
-All API responses follow a consistent envelope format.
+All API responses follow a consistent envelope format with three optional top-level fields:
 
 ```json
 {
@@ -46,9 +27,11 @@ All API responses follow a consistent envelope format.
 }
 ```
 
-- `data`: Present on success, containing the requested resource or result.
-- `error`: Present on failure, containing an error code and message.
-- `meta`: Optional, used for pagination (e.g., in list endpoints).
+- `data`: Present on success, containing the requested resource or result. Absent on error.
+- `error`: Present on failure, containing an error code and message. Absent on success.
+- `meta`: Optional, used for pagination in list endpoints.
+
+HTTP status codes: `200` for success, `201` for created, `202` for accepted, and appropriate 4xx/5xx for errors.
 
 ---
 
@@ -61,19 +44,31 @@ Authorization: Bearer <your_api_key>
 ```
 
 - API keys are configured via the `MOMO_API_KEYS` environment variable.
-- If no keys are configured, protected routes are locked and return `401 Unauthorized`.
-- Failed authentication returns a `401 Unauthorized` response with `{"error": {"code": "unauthorized", "message": "..."}}`.
+- If `MOMO_API_KEYS` is empty or unset, protected routes return `401 Unauthorized` with the standard error envelope.
+- Failed authentication returns `401 Unauthorized` with `{"error": {"code": "unauthorized", "message": "..."}}`.
+
+### Public Routes
+
+The following routes are accessible without authentication:
+
+| Route | Description |
+|-------|-------------|
+| `GET /api/v1/health` | Health check endpoint |
+| `GET /api/v1/openapi.json` | OpenAPI specification |
+| `GET /api/v1/docs` | ReDoc API documentation UI |
+
+All other `/api/v1/*` routes require a valid Bearer token.
 
 ---
 
 ## Pagination
 
-List endpoints use cursor-based pagination.
+List endpoints use page-based pagination with cursors encoded as page numbers.
 
 - **`limit`**: (Optional) Number of items to return. Default: 20, Max: 100. Clamped to 1..100.
-- **`cursor`**: (Optional) Opaque base64 string to fetch the next page.
+- **`cursor`**: (Optional) Page number (1-based) encoded as a string. Pass the value from `meta.nextCursor` to fetch the next page.
 
-Next page cursors are provided in the `meta.nextCursor` field of the response.
+Next page cursors are provided in the `meta.nextCursor` field when more results are available. The cursor is simply the next page number as a string (e.g., `"2"`, `"3"`).
 
 ---
 
@@ -94,7 +89,7 @@ Next page cursors are provided in the `meta.nextCursor` field of the response.
 
 - **`documentId`**: 21-character NanoID (e.g., `V1StGXR8_Z5jdHi6B-myT`).
 - **`memoryId`**: 21-character NanoID (e.g., `V1StGXR8_Z5jdHi6B-myT`).
-- **`ingestionId`**: UUID v4 (e.g., `550e8400-e29b-41d4-a716-446655440000`).
+- **`ingestionId`**: Same as `documentId` (maps 1:1 to the document being processed).
 
 ---
 
@@ -144,7 +139,23 @@ curl http://localhost:3000/api/v1/health
 {
   "data": {
     "status": "ok",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "database": { "status": "ok" },
+    "embeddings": {
+      "status": "ok",
+      "model": "BAAI/bge-small-en-v1.5",
+      "dimensions": 384
+    },
+    "llm": {
+      "status": "available",
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    "reranker": {
+      "enabled": false,
+      "model": null,
+      "status": "disabled"
+    }
   }
 }
 ```
@@ -176,7 +187,9 @@ Momo also exposes a built-in MCP server. This protocol surface is separate from 
   - `GET /.well-known/oauth-protected-resource`
   - `GET /.well-known/oauth-authorization-server`
 
-For protocol handshake, tool/resource catalog, and client examples, see [MCP Guide](./mcp.md).
+For protocol handshake, tool/resource catalog, and client examples, see [MCP Guide](/guides/mcp).
+
+The embedded FFI surface is separate from both REST and MCP and does not use the `{ data, meta, error }` response envelope. See [Embedded C FFI Reference](/reference/ffi).
 
 ---
 
@@ -208,10 +221,12 @@ curl -X POST http://localhost:3000/api/v1/documents \
 {
   "data": {
     "documentId": "V1StGXR8_Z5jdHi6B-myT",
-    "ingestionId": "550e8400-e29b-41d4-a716-446655440000"
+    "ingestionId": "V1StGXR8_Z5jdHi6B-myT"
   }
 }
 ```
+
+Note: `ingestionId` is the same value as `documentId` and can be used to poll the ingestion status endpoint.
 
 ### List Documents
 
@@ -244,7 +259,7 @@ curl "http://localhost:3000/api/v1/documents?containerTags=user_123&limit=10" \
     ]
   },
   "meta": {
-    "nextCursor": "eyJsYXN0X2lkIjogIjEifQ=="
+    "nextCursor": "2"
   }
 }
 ```
@@ -361,7 +376,7 @@ curl -X POST http://localhost:3000/api/v1/documents:upload \
 **Example Request:**
 
 ```bash
-curl http://localhost:3000/api/v1/ingestions/550e8400-e29b-41d4-a716-446655440000 \
+curl http://localhost:3000/api/v1/ingestions/V1StGXR8_Z5jdHi6B-myT \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -587,10 +602,18 @@ curl -X POST http://localhost:3000/api/v1/memories:forget \
 
 `GET /api/v1/memories/{memoryId}/graph`
 
+**Query Parameters:**
+
+| Parameter      | Type   | Default | Description                                           |
+| -------------- | ------ | ------- | ----------------------------------------------------- |
+| `depth`        | number | `2`     | Number of hops to traverse from the starting memory   |
+| `maxNodes`     | number | `50`    | Maximum number of memory nodes to return              |
+| `relationTypes`| string | *(all)* | Comma-separated edge types: `updates,relatesto,conflictswith,derivedfrom,sources` |
+
 **Example Request:**
 
 ```bash
-curl http://localhost:3000/api/v1/memories/mem_abc123/graph \
+curl "http://localhost:3000/api/v1/memories/mem_abc123/graph?depth=3&maxNodes=100&relationTypes=updates,sources" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -614,11 +637,40 @@ curl http://localhost:3000/api/v1/memories/mem_abc123/graph \
 
 `GET /api/v1/containers/{tag}/graph`
 
+**Query Parameters:**
+
+| Parameter  | Type   | Default | Description                              |
+| ---------- | ------ | ------- | ---------------------------------------- |
+| `maxNodes` | number | `100`   | Maximum number of memory nodes to return |
+
 **Example Request:**
 
 ```bash
-curl http://localhost:3000/api/v1/containers/user_123/graph \
+curl "http://localhost:3000/api/v1/containers/user_123/graph?maxNodes=50" \
   -H "Authorization: Bearer <token>"
+```
+
+### List Container Tags
+
+`GET /api/v1/containers/tags`
+
+Returns all distinct active container tags.
+
+**Example Request:**
+
+```bash
+curl http://localhost:3000/api/v1/containers/tags \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example Response:**
+
+```json
+{
+  "data": {
+    "tags": ["user_123", "user_456", "project_abc"]
+  }
+}
 ```
 
 ---
@@ -685,7 +737,7 @@ curl -X POST http://localhost:3000/api/v1/conversations:ingest \
   }'
 ```
 
-**Example Response (201 Created):**
+**Example Response (200 OK):**
 
 ```json
 {

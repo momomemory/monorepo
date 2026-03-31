@@ -3,11 +3,9 @@ title: MCP Guide
 description: Connect to Momo's built-in MCP server and use its tools and resources.
 ---
 
-# Momo MCP Guide
-
 Momo includes a built-in MCP server (streamable HTTP) designed to mirror Supermemory-style workflows while running in the same binary as the REST API and web console.
 
-## What You Get
+## Overview
 
 - Endpoint: `POST /mcp` (configurable with `MOMO_MCP_PATH`)
 - OAuth discovery metadata:
@@ -36,7 +34,7 @@ Momo includes a built-in MCP server (streamable HTTP) designed to mirror Superme
 | `MOMO_MCP_PUBLIC_URL` | Optional public base URL for discovery responses | (unset) |
 | `MOMO_MCP_AUTHORIZATION_SERVER` | Optional OAuth issuer URL for discovery responses | (unset) |
 
-Authentication keys are configured with `MOMO_API_KEYS` (comma-separated). If MCP auth is required and no keys are configured, MCP requests are rejected.
+Authentication keys are configured with `MOMO_API_KEYS` (comma-separated). If MCP auth is required and no keys are configured, MCP requests return `401 Unauthorized`.
 
 ## Client Configuration Example
 
@@ -71,7 +69,7 @@ curl -sS -D /tmp/mcp-init.headers \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "x-sm-project: default" \
-  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"manual-curl","version":"0.1.0"}}}' \
+  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual-curl","version":"0.1.0"}}}' \
   http://localhost:3000/mcp
 
 SESSION_ID="$(awk -F': ' 'tolower($1)=="mcp-session-id" {gsub(/\r/,"",$2); print $2}' /tmp/mcp-init.headers)"

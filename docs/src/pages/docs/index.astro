@@ -11,8 +11,21 @@ const sidebar = [
     ],
   },
   {
+    label: 'Agent Plugins',
+    items: [
+      { label: 'Overview', slug: 'guides/plugins' },
+      { label: 'OpenCode', slug: 'guides/plugins/opencode' },
+      { label: 'OpenClaw', slug: 'guides/plugins/openclaw' },
+      { label: 'Pi', slug: 'guides/plugins/pi' },
+    ],
+  },
+  {
     label: 'Reference',
-    items: [{ label: 'API Reference', slug: 'reference/api' }],
+    items: [
+      { label: 'API Reference', slug: 'reference/api' },
+      { label: 'Embedded C FFI', slug: 'reference/ffi' },
+      { label: 'Configuration', slug: 'reference/configuration' },
+    ],
   },
   {
     label: 'Project',
@@ -24,17 +37,20 @@ const sidebar = [
 <StarlightPage
   frontmatter={{
     title: 'Momo Docs',
-    description: 'Documentation for setup, integrations, and API usage.',
+    description: 'Documentation for setup, integrations, plugins, and API usage.',
   }}
   sidebar={sidebar}
 >
   <p>Momo is a self-hostable AI memory system built as a single Rust binary.</p>
 
-  <p>Use the links in the sidebar to jump into the current documentation sections.</p>
+  <p>Use the links in the sidebar to jump into setup, plugin integrations, REST and embedded APIs, and deployment details.</p>
 
   <ul>
     <li><a href="/guides/self-hosting/">Self-hosting guide</a></li>
     <li><a href="/guides/mcp/">MCP guide</a></li>
+    <li><a href="/guides/plugins/">Plugin overview</a></li>
     <li><a href="/reference/api/">API reference</a></li>
+    <li><a href="/reference/ffi/">Embedded C FFI reference</a></li>
+    <li><a href="/reference/configuration/">Configuration reference</a></li>
   </ul>
 </StarlightPage>
