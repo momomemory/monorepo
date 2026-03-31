@@ -127,10 +127,11 @@ export function GraphCanvas({ graph, onNodeSelect }: GraphCanvasProps) {
         {
           selector: 'node',
           style: {
-            'background-color': '#2f7f71',
+            'background-color': '#3d3c39',
             label: 'data(label)',
-            color: '#e7f4ef',
+            color: '#F2F1EC',
             'font-size': '9px',
+            'font-family': "'IBM Plex Mono', monospace",
             'text-wrap': 'wrap',
             'text-max-width': '110px',
             'text-valign': 'bottom',
@@ -139,25 +140,25 @@ export function GraphCanvas({ graph, onNodeSelect }: GraphCanvasProps) {
             width: 'mapData(degree, 0, 12, 42, 70)',
             height: 'mapData(degree, 0, 12, 42, 70)',
             'border-width': '1px',
-            'border-color': '#a7d4c7',
+            'border-color': '#5a5956',
           },
         },
         {
           selector: 'node[nodeType = "document"]',
           style: {
-            'background-color': '#5164b0',
-            'border-color': '#cad4ff',
+            'background-color': '#2a2927',
+            'border-color': '#8C8B82',
           },
         },
         {
           selector: 'edge',
           style: {
-            width: '2px',
-            'line-color': '#6f8e8b',
-            'target-arrow-color': '#6f8e8b',
+            width: '1px',
+            'line-color': '#5a5956',
+            'target-arrow-color': '#5a5956',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            opacity: 0.75,
+            opacity: 0.6,
           },
         },
       ],
@@ -185,12 +186,37 @@ export function GraphCanvas({ graph, onNodeSelect }: GraphCanvasProps) {
   }, [graph, nodeIndex, onNodeSelect]);
 
   if (!graph) {
-    return <div class="graph-empty">Run a graph query to visualize relationships.</div>;
+    return (
+      <div
+        class="flex items-center justify-center font-mono text-xs"
+        style={{ height: '360px', color: 'var(--c-text-3)' }}
+      >
+        Run a graph query to visualize relationships.
+      </div>
+    );
   }
 
   if (graph.nodes.length === 0) {
-    return <div class="graph-empty">Graph returned zero nodes.</div>;
+    return (
+      <div
+        class="flex items-center justify-center font-mono text-xs"
+        style={{ height: '360px', color: 'var(--c-text-3)' }}
+      >
+        Graph returned zero nodes.
+      </div>
+    );
   }
 
-  return <div class="graph-canvas" ref={containerRef} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '440px',
+        backgroundColor: 'var(--c-surface-hi)',
+        borderRadius: '4px',
+        border: '1px solid var(--c-border)',
+      }}
+    />
+  );
 }
