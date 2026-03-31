@@ -12,6 +12,12 @@ enum EmbeddingBackend {
         ingest_batch_size: usize,
         ingest_batch_pause_ms: u64,
     },
+    Http {
+        client: reqwest::Client,
+        base_url: String,
+        model: String,
+        api_key: String,
+    },
 }
 
 pub struct EmbeddingProvider {
@@ -20,17 +26,38 @@ pub struct EmbeddingProvider {
 }
 
 impl EmbeddingProvider {
-    /// Sync constructor for local models only.
+    /// Constructor — supports local fastembed and HTTP (OpenAI-compatible) backends.
     pub fn new(config: &EmbeddingsConfig) -> Result<Self> {
         let (provider, model_name) = parse_provider_model(&config.model);
 
-        if provider != "local" {
-            return Err(MomoError::Embedding(format!(
-                "Unsupported embedding provider: {provider}. Local embeddings only.",
-            )));
+        match provider {
+            "local" => Self::new_local(config, model_name),
+            "openai" | "lmstudio" | "ollama" | "infinity" | "http" => {
+                let base_url = std::env::var("EMBEDDING_BASE_URL")
+                    .unwrap_or_else(|_| "http://localhost:8080/v1".to_string());
+                let api_key = std::env::var("EMBEDDING_API_KEY")
+                    .unwrap_or_else(|_| "unused".to_string());
+                let model = config.model.clone();
+                // Strip provider/ prefix — send just the model name to the endpoint
+                let model_id = if model.contains('/') {
+                    model.split_once('/').map(|x| x.1).unwrap_or(&model).to_string()
+                } else {
+                    model.clone()
+                };
+                Ok(Self {
+                    backend: EmbeddingBackend::Http {
+                        client: reqwest::Client::new(),
+                        base_url: base_url.trim_end_matches('/').to_string(),
+                        model: model_id,
+                        api_key,
+                    },
+                    dimensions: config.dimensions,
+                })
+            }
+            _ => Err(MomoError::Embedding(format!(
+                "Unsupported embedding provider: {provider}. Use local, openai, lmstudio, ollama, infinity, or http.",
+            ))),
         }
-
-        Self::new_local(config, model_name)
     }
 
     fn new_local(config: &EmbeddingsConfig, model_name: &str) -> Result<Self> {
@@ -107,6 +134,51 @@ impl EmbeddingProvider {
                 .await
                 .map_err(|e| MomoError::Embedding(format!("Embedding worker failed: {e}")))?
             }
+            EmbeddingBackend::Http {
+                client,
+                base_url,
+                model,
+                api_key,
+            } => {
+                let url = format!("{base_url}/embeddings");
+                let body = serde_json::json!({
+                    "input": texts,
+                    "model": model,
+                });
+                let resp = client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {api_key}"))
+                    .header("Content-Type", "application/json")
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        MomoError::Embedding(format!("HTTP embedding request failed: {e}"))
+                    })?;
+
+                if !resp.status().is_success() {
+                    let status = resp.status();
+                    let text = resp.text().await.unwrap_or_default();
+                    return Err(MomoError::Embedding(format!(
+                        "Embedding endpoint returned {status}: {text}"
+                    )));
+                }
+
+                #[derive(serde::Deserialize)]
+                struct EmbeddingData {
+                    embedding: Vec<f32>,
+                }
+                #[derive(serde::Deserialize)]
+                struct EmbeddingResponse {
+                    data: Vec<EmbeddingData>,
+                }
+
+                let parsed: EmbeddingResponse = resp.json().await.map_err(|e| {
+                    MomoError::Embedding(format!("Failed to parse embedding response: {e}"))
+                })?;
+
+                Ok(parsed.data.into_iter().map(|d| d.embedding).collect())
+            }
         }
     }
 
@@ -121,9 +193,12 @@ impl EmbeddingProvider {
     pub async fn embed_query(&self, query: &str) -> Result<Vec<f32>> {
         match &self.backend {
             EmbeddingBackend::Local { .. } => {
-                // Local models use query: prefix
                 let prefixed = format!("query: {query}");
                 self.embed_single(&prefixed).await
+            }
+            EmbeddingBackend::Http { .. } => {
+                // HTTP endpoints don't use query:/passage: prefixes
+                self.embed_single(query).await
             }
         }
     }
@@ -131,24 +206,24 @@ impl EmbeddingProvider {
     pub async fn embed_passage(&self, passage: &str) -> Result<Vec<f32>> {
         match &self.backend {
             EmbeddingBackend::Local { .. } => {
-                // Local models use passage: prefix
                 let prefixed = format!("passage: {passage}");
                 self.embed_single(&prefixed).await
             }
+            EmbeddingBackend::Http { .. } => self.embed_single(passage).await,
         }
     }
 
     pub async fn embed_passages(&self, passages: Vec<String>) -> Result<Vec<Vec<f32>>> {
+        if passages.is_empty() {
+            return Ok(Vec::new());
+        }
+
         match &self.backend {
             EmbeddingBackend::Local {
                 ingest_batch_size,
                 ingest_batch_pause_ms,
                 ..
             } => {
-                if passages.is_empty() {
-                    return Ok(Vec::new());
-                }
-
                 let mut all_embeddings = Vec::with_capacity(passages.len());
                 for batch in passages.chunks(*ingest_batch_size) {
                     let prefixed: Vec<String> =
@@ -165,7 +240,18 @@ impl EmbeddingProvider {
                         .await;
                     }
                 }
-
+                Ok(all_embeddings)
+            }
+            EmbeddingBackend::Http { .. } => {
+                // Send in batches of 32 to avoid overwhelming the endpoint
+                let batch_size = 32;
+                let mut all_embeddings = Vec::with_capacity(passages.len());
+                for batch in passages.chunks(batch_size) {
+                    let mut embedded = self
+                        .embed_with_mode(batch.to_vec(), EmbeddingMode::Ingest)
+                        .await?;
+                    all_embeddings.append(&mut embedded);
+                }
                 Ok(all_embeddings)
             }
         }
@@ -192,6 +278,20 @@ impl Clone for EmbeddingProvider {
                     batch_size: *batch_size,
                     ingest_batch_size: *ingest_batch_size,
                     ingest_batch_pause_ms: *ingest_batch_pause_ms,
+                },
+                dimensions: self.dimensions,
+            },
+            EmbeddingBackend::Http {
+                client,
+                base_url,
+                model,
+                api_key,
+            } => Self {
+                backend: EmbeddingBackend::Http {
+                    client: client.clone(),
+                    base_url: base_url.clone(),
+                    model: model.clone(),
+                    api_key: api_key.clone(),
                 },
                 dimensions: self.dimensions,
             },

@@ -3,7 +3,12 @@ use libsql::Connection;
 use crate::error::Result;
 
 pub async fn init_schema(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
+    let dims = std::env::var("EMBEDDING_DIMENSIONS")
+        .unwrap_or_else(|_| "384".to_string())
+        .parse::<u32>()
+        .unwrap_or(384);
+
+    conn.execute_batch(&format!(
         r#"
         -- Documents table
         CREATE TABLE IF NOT EXISTS documents (
@@ -17,7 +22,7 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
             source TEXT,
             doc_type TEXT NOT NULL DEFAULT 'text',
             status TEXT NOT NULL DEFAULT 'queued',
-            metadata TEXT DEFAULT '{}',
+            metadata TEXT DEFAULT '{{}}',
             container_tags TEXT DEFAULT '[]',
             chunk_count INTEGER DEFAULT 0,
             token_count INTEGER,
@@ -39,7 +44,7 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
             embedded_content TEXT,
             position INTEGER NOT NULL,
             token_count INTEGER,
-            embedding F32_BLOB(384),
+            embedding F32_BLOB({dims}),
             created_at TEXT NOT NULL,
             FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
         );
@@ -56,7 +61,7 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
             is_latest INTEGER NOT NULL DEFAULT 1,
             parent_memory_id TEXT,
             root_memory_id TEXT,
-            memory_relations TEXT DEFAULT '{}',
+            memory_relations TEXT DEFAULT '{{}}',
             source_count INTEGER DEFAULT 0,
             is_inference INTEGER NOT NULL DEFAULT 0,
             is_forgotten INTEGER NOT NULL DEFAULT 0,
@@ -66,8 +71,8 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
             memory_type TEXT NOT NULL DEFAULT 'fact',
             last_accessed TEXT,
             confidence REAL,
-            metadata TEXT DEFAULT '{}',
-            embedding F32_BLOB(384),
+            metadata TEXT DEFAULT '{{}}',
+            embedding F32_BLOB({dims}),
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (parent_memory_id) REFERENCES memories(id),
@@ -102,7 +107,7 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
         -- Container tags metadata
         CREATE TABLE IF NOT EXISTS container_tags (
             tag TEXT PRIMARY KEY,
-            metadata TEXT DEFAULT '{}',
+            metadata TEXT DEFAULT '{{}}',
             document_count INTEGER DEFAULT 0,
             memory_count INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
@@ -137,7 +142,7 @@ pub async fn init_schema(conn: &Connection) -> Result<()> {
             value TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#,
+        "#, dims=dims),
     )
     .await?;
 
