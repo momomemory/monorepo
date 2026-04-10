@@ -117,6 +117,7 @@ export function DocumentsPage() {
     fd.append('file', uploadFile);
     if (containerTag.trim()) fd.append('containerTag', containerTag.trim());
     if (uploadMetadata.trim()) fd.append('metadata', uploadMetadata);
+    fd.append('extractMemories', String(extractMemories));
     await run(() =>
       apiEnvelope<{ documentId?: string; ingestionId?: string }>(apiKey, '/documents:upload', {
         method: 'POST',
@@ -303,6 +304,11 @@ export function DocumentsPage() {
                   rows={3}
                   mono
                   placeholder='{}'
+                />
+                <Toggle
+                  checked={extractMemories}
+                  onChange={setExtractMemories}
+                  label="Extract memories from document"
                 />
                 <div class="flex gap-2">
                   <Button variant="primary" size="sm" loading={state.loading} onClick={uploadDocument}>
