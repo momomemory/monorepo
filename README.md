@@ -59,7 +59,9 @@ curl -X POST http://localhost:3000/api/v1/search \
 ## Monorepo Layout
 
 - `momo/`: Core Rust server, embedded frontend, API, background services
+- `docs/`: Astro + Starlight documentation site
 - `sdks/typescript/`: Official TypeScript SDK (`@momomemory/sdk`)
+- `sdks/python/`: Official Python SDK (`momo-sdk`)
 - `plugins/opencode-momo/`: OpenCode plugin
 - `plugins/openclaw-momo/`: OpenClaw plugin
 - `plugins/pi-momo/`: Pi plugin
@@ -84,9 +86,21 @@ See full command list in `justfile`.
 | Language | Package | Status |
 |----------|---------|--------|
 | **TypeScript** | [`@momomemory/sdk`](https://github.com/momomemory/sdk-typescript) | Stable |
-| **Python** | `momomemory-sdk` | Coming Soon |
+| **Python** | [`momo-sdk`](https://github.com/momomemory/sdk-python) | Beta |
 | **Rust** | `momo-sdk` | Coming Soon |
 | **Go** | `momo-go` | Coming Soon |
+
+## Packages
+
+| Area | Path | Package |
+|------|------|---------|
+| **Core server** | `momo/` | [`momo`](https://github.com/momomemory/momo) |
+| **Docs site** | `docs/` | `docs` |
+| **TypeScript SDK** | `sdks/typescript/` | [`@momomemory/sdk`](https://github.com/momomemory/sdk-typescript) |
+| **Python SDK** | `sdks/python/` | [`momo-sdk`](https://github.com/momomemory/sdk-python) |
+| **OpenCode plugin** | `plugins/opencode-momo/` | [`@momomemory/opencode-momo`](https://github.com/momomemory/opencode-momo) |
+| **OpenClaw plugin** | `plugins/openclaw-momo/` | [`@momomemory/openclaw-momo`](https://github.com/momomemory/openclaw-momo) |
+| **Pi plugin** | `plugins/pi-momo/` | [`@momomemory/pi-momo`](https://github.com/momomemory/pi-momo) |
 
 ## Plugins
 
@@ -108,6 +122,7 @@ See full command list in `justfile`.
 
 - **[momomemory/momo](https://github.com/momomemory/momo)**: Core server mirror (Rust).
 - **[momomemory/sdk-typescript](https://github.com/momomemory/sdk-typescript)**: TypeScript SDK mirror.
+- **[momomemory/sdk-python](https://github.com/momomemory/sdk-python)**: Python SDK mirror.
 - **[momomemory/opencode-momo](https://github.com/momomemory/opencode-momo)**: OpenCode plugin.
 - **[momomemory/openclaw-momo](https://github.com/momomemory/openclaw-momo)**: OpenClaw plugin.
 - **[momomemory/pi-momo](https://github.com/momomemory/pi-momo)**: Pi plugin.
