@@ -115,6 +115,21 @@ impl ProcessingPipeline {
                     return Err(e);
                 }
             }
+        } else if doc.doc_type == DocumentType::Pdf {
+            // Decode base64 PDF content and extract text
+            match self.extract_pdf(doc_id, content).await {
+                Ok(e) => e,
+                Err(e) => {
+                    self.db
+                        .update_document_status(
+                            doc_id,
+                            ProcessingStatus::Failed,
+                            Some(&e.to_string()),
+                        )
+                        .await?;
+                    return Err(e);
+                }
+            }
         } else {
             match self.extractor.extract(content).await {
                 Ok(e) => e,
@@ -502,6 +517,25 @@ impl ProcessingPipeline {
             doc_id = %doc_id,
             word_count = extracted.word_count,
             "Video transcription complete"
+        );
+
+        Ok(extracted)
+    }
+
+    async fn extract_pdf(&self, doc_id: &str, content: &str) -> Result<ExtractedContent> {
+        tracing::info!(doc_id = %doc_id, "Processing PDF document");
+
+        let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, content)
+            .map_err(|e| {
+                crate::error::MomoError::Processing(format!("Failed to decode base64 PDF: {e}"))
+            })?;
+
+        let extracted = self.extractor.extract_from_pdf(&bytes, None)?;
+
+        tracing::info!(
+            doc_id = %doc_id,
+            word_count = extracted.word_count,
+            "PDF extraction complete"
         );
 
         Ok(extracted)
