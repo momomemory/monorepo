@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
 from .._transport import AsyncTransport, SyncTransport, _parse_model
 from ..models import (
     BatchCreateDocumentRequest,
+    BatchCreateDocumentResponse,
     CreateDocumentRequest,
     CreateDocumentResponse,
     DocumentResponse,
@@ -80,7 +82,7 @@ class DocumentsGroup:
         container_tag: str | None = None,
         metadata: dict[str, Any] | None = None,
         options: RequestOptions | None = None,
-    ) -> list[CreateDocumentResponse]:
+    ) -> BatchCreateDocumentResponse:
         body = BatchCreateDocumentRequest(
             documents=documents,
             container_tag=container_tag or self._dct,
@@ -88,11 +90,11 @@ class DocumentsGroup:
         )
         raw = self._t.request(
             "POST",
-            "/api/v1/documents/batch",
+            "/api/v1/documents:batch",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )
-        return [_parse_model(item, CreateDocumentResponse) for item in raw]
+        return _parse_model(raw, BatchCreateDocumentResponse)
 
     def upload(
         self,
@@ -136,7 +138,7 @@ class DocumentsGroup:
         self,
         document_id: str,
         *,
-        metadata: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
         container_tags: list[str] | None = None,
         title: str | None = None,
         options: RequestOptions | None = None,
@@ -147,7 +149,7 @@ class DocumentsGroup:
             title=title,
         )
         raw = self._t.request(
-            "PUT",
+            "PATCH",
             f"/api/v1/documents/{document_id}",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
@@ -172,12 +174,20 @@ class DocumentsGroup:
         params: dict[str, Any] = {}
         tag = container_tag or self._dct
         if tag:
-            params["containerTag"] = tag
+            params["containerTags"] = [tag]
         if cursor:
             params["cursor"] = cursor
         if limit is not None:
             params["limit"] = limit
-        raw = self._t.request("GET", "/api/v1/documents", params=params or None, options=options)
+        envelope = self._t.request(
+            "GET",
+            "/api/v1/documents",
+            params=params or None,
+            options=options,
+            include_meta=True,
+        )
+        raw = envelope["data"]
+        raw["meta"] = envelope.get("meta")
         return _parse_model(raw, ListDocumentsResponse)
 
     def get_ingestion_status(
@@ -187,7 +197,7 @@ class DocumentsGroup:
     ) -> IngestionStatusResponse:
         raw = self._t.request(
             "GET",
-            f"/api/v1/documents/ingestion/{ingestion_id}",
+            f"/api/v1/ingestions/{ingestion_id}",
             options=options,
         )
         return _parse_model(raw, IngestionStatusResponse)
@@ -239,7 +249,7 @@ class AsyncDocumentsGroup:
         container_tag: str | None = None,
         metadata: dict[str, Any] | None = None,
         options: RequestOptions | None = None,
-    ) -> list[CreateDocumentResponse]:
+    ) -> BatchCreateDocumentResponse:
         body = BatchCreateDocumentRequest(
             documents=documents,
             container_tag=container_tag or self._dct,
@@ -247,11 +257,11 @@ class AsyncDocumentsGroup:
         )
         raw = await self._t.request(
             "POST",
-            "/api/v1/documents/batch",
+            "/api/v1/documents:batch",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )
-        return [_parse_model(item, CreateDocumentResponse) for item in raw]
+        return _parse_model(raw, BatchCreateDocumentResponse)
 
     async def upload(
         self,
@@ -263,7 +273,7 @@ class AsyncDocumentsGroup:
         metadata: dict[str, Any] | None = None,
         options: RequestOptions | None = None,
     ) -> CreateDocumentResponse:
-        files = _build_upload_files(source, filename)
+        files = await asyncio.to_thread(_build_upload_files, source, filename)
         form: dict[str, Any] = {}
         if container_tag or self._dct:
             form["containerTag"] = container_tag or self._dct
@@ -295,7 +305,7 @@ class AsyncDocumentsGroup:
         self,
         document_id: str,
         *,
-        metadata: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
         container_tags: list[str] | None = None,
         title: str | None = None,
         options: RequestOptions | None = None,
@@ -306,7 +316,7 @@ class AsyncDocumentsGroup:
             title=title,
         )
         raw = await self._t.request(
-            "PUT",
+            "PATCH",
             f"/api/v1/documents/{document_id}",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
@@ -331,14 +341,20 @@ class AsyncDocumentsGroup:
         params: dict[str, Any] = {}
         tag = container_tag or self._dct
         if tag:
-            params["containerTag"] = tag
+            params["containerTags"] = [tag]
         if cursor:
             params["cursor"] = cursor
         if limit is not None:
             params["limit"] = limit
-        raw = await self._t.request(
-            "GET", "/api/v1/documents", params=params or None, options=options
+        envelope = await self._t.request(
+            "GET",
+            "/api/v1/documents",
+            params=params or None,
+            options=options,
+            include_meta=True,
         )
+        raw = envelope["data"]
+        raw["meta"] = envelope.get("meta")
         return _parse_model(raw, ListDocumentsResponse)
 
     async def get_ingestion_status(
@@ -348,7 +364,7 @@ class AsyncDocumentsGroup:
     ) -> IngestionStatusResponse:
         raw = await self._t.request(
             "GET",
-            f"/api/v1/documents/ingestion/{ingestion_id}",
+            f"/api/v1/ingestions/{ingestion_id}",
             options=options,
         )
         return _parse_model(raw, IngestionStatusResponse)

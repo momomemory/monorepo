@@ -19,7 +19,7 @@ class AdminGroup:
         self,
         options: RequestOptions | None = None,
     ) -> ForgettingRunResponse:
-        raw = self._t.request("POST", "/api/v1/admin/run-forgetting", options=options)
+        raw = self._t.request("POST", "/api/v1/admin/forgetting:run", options=options)
         return _parse_model(raw, ForgettingRunResponse)
 
 
@@ -33,5 +33,5 @@ class AsyncAdminGroup:
         self,
         options: RequestOptions | None = None,
     ) -> ForgettingRunResponse:
-        raw = await self._t.request("POST", "/api/v1/admin/run-forgetting", options=options)
+        raw = await self._t.request("POST", "/api/v1/admin/forgetting:run", options=options)
         return _parse_model(raw, ForgettingRunResponse)

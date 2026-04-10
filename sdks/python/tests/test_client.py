@@ -247,7 +247,152 @@ def test_default_container_tag_applied_to_documents_list():
     client = MomoClient(base_url=BASE_URL, api_key=API_KEY, default_container_tag="tenant-1")
     client.documents.list()
 
-    assert "containerTag=tenant-1" in str(route.calls[0].request.url)
+    assert route.calls[0].request.url.params.get_list("containerTags") == ["tenant-1"]
+
+
+@respx.mock
+def test_documents_list_preserves_pagination_meta():
+    respx.get(f"{BASE_URL}/api/v1/documents").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": {"documents": []},
+                "meta": {"nextCursor": "next-docs", "total": 42},
+            },
+        )
+    )
+    client = MomoClient(base_url=BASE_URL, api_key=API_KEY)
+    result = client.documents.list(limit=10)
+
+    assert result.meta is not None
+    assert result.meta.next_cursor == "next-docs"
+    assert result.meta.total == 42
+
+
+@respx.mock
+def test_memories_list_preserves_pagination_meta():
+    respx.get(f"{BASE_URL}/api/v1/memories").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": {"memories": []},
+                "meta": {"nextCursor": "next-memories", "total": 7},
+            },
+        )
+    )
+    client = MomoClient(base_url=BASE_URL, api_key=API_KEY)
+    result = client.memories.list(limit=5)
+
+    assert result.meta is not None
+    assert result.meta.next_cursor == "next-memories"
+    assert result.meta.total == 7
+
+
+@respx.mock
+def test_sdk_uses_server_route_shapes():
+    batch = respx.post(f"{BASE_URL}/api/v1/documents:batch").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap({"documents": [{"documentId": "doc-1", "ingestionId": "ing-1"}]}),
+        )
+    )
+    update_doc = respx.patch(f"{BASE_URL}/api/v1/documents/doc-1").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap(
+                {
+                    "documentId": "doc-1",
+                    "docType": "text",
+                    "ingestionStatus": "completed",
+                    "metadata": {},
+                    "containerTags": [],
+                    "chunkCount": 0,
+                    "createdAt": "2024-01-01T00:00:00Z",
+                    "updatedAt": "2024-01-01T00:00:00Z",
+                }
+            ),
+        )
+    )
+    ingestion = respx.get(f"{BASE_URL}/api/v1/ingestions/ing-1").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap(
+                {
+                    "documentId": "doc-1",
+                    "status": "completed",
+                    "createdAt": "2024-01-01T00:00:00Z",
+                }
+            ),
+        )
+    )
+    update_memory = respx.patch(f"{BASE_URL}/api/v1/memories/mem-1").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap(
+                {
+                    "memoryId": "mem-1",
+                    "content": "updated",
+                    "version": 2,
+                    "createdAt": "2024-01-01T00:00:00Z",
+                }
+            ),
+        )
+    )
+    memory_graph = respx.get(f"{BASE_URL}/api/v1/memories/mem-1/graph").mock(
+        return_value=httpx.Response(200, json=_wrap({"nodes": [], "links": []}))
+    )
+    container_graph = respx.get(f"{BASE_URL}/api/v1/containers/tenant-1/graph").mock(
+        return_value=httpx.Response(200, json=_wrap({"nodes": [], "links": []}))
+    )
+    profile = respx.post(f"{BASE_URL}/api/v1/profile:compute").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap(
+                {
+                    "containerTag": "tenant-1",
+                    "staticFacts": [],
+                    "dynamicFacts": [],
+                    "totalMemories": 0,
+                    "lastUpdated": "2024-01-01T00:00:00Z",
+                }
+            ),
+        )
+    )
+    conversations = respx.post(f"{BASE_URL}/api/v1/conversations:ingest").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap({"memoriesExtracted": 0, "memoryIds": [], "sessionId": "sess-1"}),
+        )
+    )
+    admin = respx.post(f"{BASE_URL}/api/v1/admin/forgetting:run").mock(
+        return_value=httpx.Response(
+            200,
+            json=_wrap({"memoriesForgotten": 0, "memoriesEvaluated": 0}),
+        )
+    )
+
+    client = MomoClient(base_url=BASE_URL, api_key=API_KEY, default_container_tag="tenant-1")
+
+    batch_result = client.documents.batch_create([{"content": "hello"}])
+    client.documents.update("doc-1", title="Updated title")
+    client.documents.get_ingestion_status("ing-1")
+    client.memories.update("mem-1", content="updated")
+    client.graph.get_memory_graph("mem-1")
+    client.graph.get_container_graph("tenant-1")
+    client.profile.compute()
+    client.conversations.ingest([{"role": "user", "content": "hello"}])
+    client.admin.run_forgetting()
+
+    assert batch.called
+    assert update_doc.called
+    assert ingestion.called
+    assert update_memory.called
+    assert memory_graph.called
+    assert container_graph.called
+    assert profile.called
+    assert conversations.called
+    assert admin.called
+    assert batch_result.documents[0].document_id == "doc-1"
 
 
 # ===========================================================================

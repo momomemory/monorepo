@@ -58,6 +58,8 @@ def _parse_envelope(
     response: httpx.Response,
     method: str,
     path: str,
+    *,
+    include_meta: bool = False,
 ) -> Any:
     """Unwrap the ``{ "data": ... }`` envelope, raising MomoError on failure."""
     if response.status_code == 204:
@@ -109,6 +111,11 @@ def _parse_envelope(
         )
 
     if isinstance(body, dict) and "data" in body:
+        if include_meta:
+            return {
+                "data": body["data"],
+                "meta": body.get("meta"),
+            }
         return body["data"]
     return body
 
@@ -180,6 +187,7 @@ class SyncTransport:
         data: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
         options: RequestOptions | None = None,
+        include_meta: bool = False,
     ) -> Any:
         url = _build_url(self._config.base_url, path)
         auth = self._get_auth()
@@ -197,7 +205,7 @@ class SyncTransport:
             headers=headers,
             timeout=timeout,
         )
-        return _parse_envelope(response, method, path)
+        return _parse_envelope(response, method, path, include_meta=include_meta)
 
     # -- lifecycle --------------------------------------------------------
 
@@ -260,6 +268,7 @@ class AsyncTransport:
         data: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
         options: RequestOptions | None = None,
+        include_meta: bool = False,
     ) -> Any:
         url = _build_url(self._config.base_url, path)
         auth = await self._get_auth()
@@ -277,7 +286,7 @@ class AsyncTransport:
             headers=headers,
             timeout=timeout,
         )
-        return _parse_envelope(response, method, path)
+        return _parse_envelope(response, method, path, include_meta=include_meta)
 
     async def close(self) -> None:
         if self._owned:

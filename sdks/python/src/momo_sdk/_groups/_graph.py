@@ -34,7 +34,7 @@ class GraphGroup:
             params["relationTypes"] = relation_types
         raw = self._t.request(
             "GET",
-            f"/api/v1/graph/memory/{memory_id}",
+            f"/api/v1/memories/{memory_id}/graph",
             params=params or None,
             options=options,
         )
@@ -52,7 +52,7 @@ class GraphGroup:
             params["maxNodes"] = max_nodes
         raw = self._t.request(
             "GET",
-            f"/api/v1/graph/container/{container_tag}",
+            f"/api/v1/containers/{container_tag}/graph",
             params=params or None,
             options=options,
         )
@@ -83,7 +83,7 @@ class AsyncGraphGroup:
             params["relationTypes"] = relation_types
         raw = await self._t.request(
             "GET",
-            f"/api/v1/graph/memory/{memory_id}",
+            f"/api/v1/memories/{memory_id}/graph",
             params=params or None,
             options=options,
         )
@@ -101,7 +101,7 @@ class AsyncGraphGroup:
             params["maxNodes"] = max_nodes
         raw = await self._t.request(
             "GET",
-            f"/api/v1/graph/container/{container_tag}",
+            f"/api/v1/containers/{container_tag}/graph",
             params=params or None,
             options=options,
         )

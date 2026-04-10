@@ -73,7 +73,7 @@ class MemoriesGroup:
             is_static=is_static,
         )
         raw = self._t.request(
-            "PUT",
+            "PATCH",
             f"/api/v1/memories/{memory_id}",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
@@ -96,7 +96,15 @@ class MemoriesGroup:
             params["cursor"] = cursor
         if limit is not None:
             params["limit"] = limit
-        raw = self._t.request("GET", "/api/v1/memories", params=params or None, options=options)
+        envelope = self._t.request(
+            "GET",
+            "/api/v1/memories",
+            params=params or None,
+            options=options,
+            include_meta=True,
+        )
+        raw = envelope["data"]
+        raw["meta"] = envelope.get("meta")
         return _parse_model(raw, ListMemoriesResponse)
 
     def forget(
@@ -199,7 +207,7 @@ class AsyncMemoriesGroup:
             is_static=is_static,
         )
         raw = await self._t.request(
-            "PUT",
+            "PATCH",
             f"/api/v1/memories/{memory_id}",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
@@ -222,9 +230,15 @@ class AsyncMemoriesGroup:
             params["cursor"] = cursor
         if limit is not None:
             params["limit"] = limit
-        raw = await self._t.request(
-            "GET", "/api/v1/memories", params=params or None, options=options
+        envelope = await self._t.request(
+            "GET",
+            "/api/v1/memories",
+            params=params or None,
+            options=options,
+            include_meta=True,
         )
+        raw = envelope["data"]
+        raw["meta"] = envelope.get("meta")
         return _parse_model(raw, ListMemoriesResponse)
 
     async def forget(

@@ -48,7 +48,7 @@ class ConversationsGroup:
         )
         raw = self._t.request(
             "POST",
-            "/api/v1/conversations/ingest",
+            "/api/v1/conversations:ingest",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )
@@ -88,7 +88,7 @@ class AsyncConversationsGroup:
         )
         raw = await self._t.request(
             "POST",
-            "/api/v1/conversations/ingest",
+            "/api/v1/conversations:ingest",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )

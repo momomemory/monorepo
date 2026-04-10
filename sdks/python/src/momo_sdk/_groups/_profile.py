@@ -40,7 +40,7 @@ class ProfileGroup:
         )
         raw = self._t.request(
             "POST",
-            "/api/v1/profile",
+            "/api/v1/profile:compute",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )
@@ -78,7 +78,7 @@ class AsyncProfileGroup:
         )
         raw = await self._t.request(
             "POST",
-            "/api/v1/profile",
+            "/api/v1/profile:compute",
             json=body.model_dump(by_alias=True, exclude_none=True),
             options=options,
         )

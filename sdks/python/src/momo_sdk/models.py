@@ -153,13 +153,17 @@ class BatchCreateDocumentRequest(_MomoModel):
     metadata: dict[str, Any] | None = None
 
 
+class BatchCreateDocumentResponse(_MomoModel):
+    documents: list[CreateDocumentResponse]
+
+
 class CreateDocumentResponse(_MomoModel):
     document_id: str
     ingestion_id: str
 
 
 class UpdateDocumentRequest(_MomoModel):
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None = None
     container_tags: list[str] | None = None
     title: str | None = None
 
@@ -205,6 +209,7 @@ class IngestionStatusResponse(_MomoModel):
 
 class ListDocumentsResponse(_MomoModel):
     documents: list[DocumentSummaryResponse]
+    meta: ResponseMeta | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +257,7 @@ class UpdateMemoryResponse(_MomoModel):
 
 class ListMemoriesResponse(_MomoModel):
     memories: list[MemoryResponse]
+    meta: ResponseMeta | None = None
 
 
 class ForgetMemoryRequest(_MomoModel):
