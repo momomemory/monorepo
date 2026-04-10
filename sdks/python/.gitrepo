@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:momomemory/sdk-python.git
 	branch = main
-	commit = 5ea54e60a9685f68e0b67082065f7bb4b67ca381
+	commit = 62d4d08bc3e9c03ded665daa0e6538d1826fc3c0
 	method = merge
 	cmdver = 0.4.9
-	parent = b5c3843614b76e155f96112da87569fcc6fd4e2a
+	parent = ee594bcd7067ee7688c6472c73c3169ce0d545bd
