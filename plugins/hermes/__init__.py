@@ -1,8 +1,4 @@
-"""Momo memory plugin for Hermes Agent.
-
-Self-hostable AI memory system with vector search, providing long-term memory
-cross-session persistence for Hermes Agent.
-"""
+"""Momo memory plugin using the Hermes MemoryProvider interface."""
 
 from __future__ import annotations
 
@@ -10,6 +6,7 @@ import json
 import logging
 import os
 import re
+import threading
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -21,32 +18,25 @@ from tools.registry import tool_error
 
 logger = logging.getLogger(__name__)
 
-# Default configuration values
 _DEFAULT_BASE_URL = "http://localhost:3000"
 _DEFAULT_CONTAINER_TAG = "hermes"
 _DEFAULT_MAX_RECALL_RESULTS = 10
 _DEFAULT_PROFILE_FREQUENCY = 50
-_DEFAULT_AUTO_RECALL = True
-_DEFAULT_AUTO_CAPTURE = True
 _DEFAULT_API_TIMEOUT = 5.0
-
-# Regex patterns
+_MIN_CAPTURE_LENGTH = 10
 _TRIVIAL_RE = re.compile(
     r"^(ok|okay|thanks|thank you|got it|sure|yes|no|yep|nope|k|ty|thx|np|hi|hello)\.?$",
     re.IGNORECASE,
 )
-_CONTEXT_STRIP_RE = re.compile(
-    r"<momo-context>[\s\S]*?</momo-context>\s*", re.DOTALL
-)
+_CONTEXT_STRIP_RE = re.compile(r"<momo-context>[\s\S]*?</momo-context>\s*", re.DOTALL)
 
 
-def _default_config() -> dict:
-    """Return default configuration."""
+def _default_config() -> dict[str, Any]:
     return {
         "base_url": _DEFAULT_BASE_URL,
         "container_tag": _DEFAULT_CONTAINER_TAG,
-        "auto_recall": _DEFAULT_AUTO_RECALL,
-        "auto_capture": _DEFAULT_AUTO_CAPTURE,
+        "auto_recall": True,
+        "auto_capture": True,
         "max_recall_results": _DEFAULT_MAX_RECALL_RESULTS,
         "profile_frequency": _DEFAULT_PROFILE_FREQUENCY,
         "api_timeout": _DEFAULT_API_TIMEOUT,
@@ -54,7 +44,6 @@ def _default_config() -> dict:
 
 
 def _as_bool(value: Any, default: bool) -> bool:
-    """Convert value to boolean."""
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
@@ -67,27 +56,32 @@ def _as_bool(value: Any, default: bool) -> bool:
 
 
 def _sanitize_tag(raw: str) -> str:
-    """Sanitize container tag to valid format."""
     tag = re.sub(r"[^a-zA-Z0-9_-]", "_", raw or "")
     tag = re.sub(r"_+", "_", tag)
     return tag.strip("_") or _DEFAULT_CONTAINER_TAG
 
 
-def _load_momo_config(hermes_home: str) -> dict:
-    """Load Momo configuration from file and env vars."""
+def _load_json_config(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("Failed to parse %s", path, exc_info=True)
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _load_momo_config(hermes_home: str) -> dict[str, Any]:
     config = _default_config()
-    
-    # Load from config file
-    config_path = Path(hermes_home) / "momo.json"
-    if config_path.exists():
-        try:
-            raw = json.loads(config_path.read_text(encoding="utf-8"))
-            if isinstance(raw, dict):
-                config.update({k: v for k, v in raw.items() if v is not None})
-        except Exception:
-            logger.debug("Failed to parse %s", config_path, exc_info=True)
-    
-    # Override with environment variables (highest priority)
+    config.update(
+        {
+            k: v
+            for k, v in _load_json_config(Path(hermes_home) / "momo.json").items()
+            if v is not None
+        }
+    )
+
     if os.getenv("MOMO_BASE_URL"):
         config["base_url"] = os.getenv("MOMO_BASE_URL")
     if os.getenv("MOMO_API_KEY"):
@@ -99,548 +93,716 @@ def _load_momo_config(hermes_home: str) -> dict:
     if os.getenv("MOMO_AUTO_CAPTURE"):
         config["auto_capture"] = _as_bool(os.getenv("MOMO_AUTO_CAPTURE"), True)
     if os.getenv("MOMO_MAX_RECALL_RESULTS"):
-        try:
-            config["max_recall_results"] = max(1, min(20, int(os.getenv("MOMO_MAX_RECALL_RESULTS"))))
-        except ValueError:
-            pass
+        config["max_recall_results"] = os.getenv("MOMO_MAX_RECALL_RESULTS")
     if os.getenv("MOMO_PROFILE_FREQUENCY"):
-        try:
-            config["profile_frequency"] = max(1, min(500, int(os.getenv("MOMO_PROFILE_FREQUENCY"))))
-        except ValueError:
-            pass
-    
-    # Sanitize container tag
-    config["container_tag"] = _sanitize_tag(config.get("container_tag", _DEFAULT_CONTAINER_TAG))
-    
-    # Ensure boolean types
-    config["auto_recall"] = _as_bool(config.get("auto_recall"), _DEFAULT_AUTO_RECALL)
-    config["auto_capture"] = _as_bool(config.get("auto_capture"), _DEFAULT_AUTO_CAPTURE)
-    
-    # Clamp numeric values
+        config["profile_frequency"] = os.getenv("MOMO_PROFILE_FREQUENCY")
+    if os.getenv("MOMO_API_TIMEOUT"):
+        config["api_timeout"] = os.getenv("MOMO_API_TIMEOUT")
+
+    raw_tag = str(config.get("container_tag", _DEFAULT_CONTAINER_TAG)).strip()
+    config["container_tag"] = raw_tag or _DEFAULT_CONTAINER_TAG
+    config["auto_recall"] = _as_bool(config.get("auto_recall"), True)
+    config["auto_capture"] = _as_bool(config.get("auto_capture"), True)
+
     try:
-        config["max_recall_results"] = max(1, min(20, int(config.get("max_recall_results", _DEFAULT_MAX_RECALL_RESULTS))))
-    except (ValueError, TypeError):
+        config["max_recall_results"] = max(
+            1,
+            min(20, int(config.get("max_recall_results", _DEFAULT_MAX_RECALL_RESULTS))),
+        )
+    except Exception:
         config["max_recall_results"] = _DEFAULT_MAX_RECALL_RESULTS
-    
+
     try:
-        config["profile_frequency"] = max(1, min(500, int(config.get("profile_frequency", _DEFAULT_PROFILE_FREQUENCY))))
-    except (ValueError, TypeError):
+        config["profile_frequency"] = max(
+            1,
+            min(500, int(config.get("profile_frequency", _DEFAULT_PROFILE_FREQUENCY))),
+        )
+    except Exception:
         config["profile_frequency"] = _DEFAULT_PROFILE_FREQUENCY
-    
+
     try:
-        config["api_timeout"] = max(0.5, min(15.0, float(config.get("api_timeout", _DEFAULT_API_TIMEOUT))))
-    except (ValueError, TypeError):
+        config["api_timeout"] = max(
+            0.5,
+            min(15.0, float(config.get("api_timeout", _DEFAULT_API_TIMEOUT))),
+        )
+    except Exception:
         config["api_timeout"] = _DEFAULT_API_TIMEOUT
-    
+
     return config
 
 
-class MomoProvider(MemoryProvider):
-    """Momo memory provider implementation for Hermes Agent."""
+def _save_momo_config(values: dict[str, Any], hermes_home: str) -> None:
+    config_path = Path(hermes_home) / "momo.json"
+    existing = _load_json_config(config_path)
+    existing.update(values)
+    config_path.write_text(
+        json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def _clean_text_for_capture(text: str) -> str:
+    return _CONTEXT_STRIP_RE.sub("", text or "").strip()
+
+
+def _is_trivial_message(text: str) -> bool:
+    return bool(_TRIVIAL_RE.match((text or "").strip()))
+
+
+def _detect_memory_type(content: str) -> str:
+    lowered = content.lower()
+    if re.search(r"prefer|like|love|hate|want", lowered):
+        return "preference"
+    return "fact"
+
+
+def _format_relative_time(iso_timestamp: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        seconds = (now - dt).total_seconds()
+        if seconds < 1800:
+            return "just now"
+        if seconds < 3600:
+            return f"{int(seconds / 60)}m ago"
+        if seconds < 86400:
+            return f"{int(seconds / 3600)}h ago"
+        if seconds < 604800:
+            return f"{int(seconds / 86400)}d ago"
+        if dt.year == now.year:
+            return dt.strftime("%d %b")
+        return dt.strftime("%d %b %Y")
+    except Exception:
+        return ""
+
+
+def _extract_data(payload: Optional[dict[str, Any]]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    data = payload.get("data")
+    return data if isinstance(data, dict) else {}
+
+
+class _MomoClient:
+    def __init__(self, base_url: str, timeout: float, api_key: str = ""):
+        self._base_url = base_url.rstrip("/")
+        self._timeout = timeout
+        self._api_key = api_key
+
+    def _request(
+        self, method: str, endpoint: str, data: Optional[dict[str, Any]] = None
+    ) -> Optional[dict[str, Any]]:
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+
+        req = urllib.request.Request(
+            f"{self._base_url}{endpoint}",
+            data=json.dumps(data).encode("utf-8") if data is not None else None,
+            headers=headers,
+            method=method,
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=self._timeout) as response:
+                body = response.read().decode("utf-8")
+        except urllib.error.HTTPError:
+            logger.warning(
+                "Momo API request failed: %s %s", method, endpoint, exc_info=True
+            )
+            return None
+        except Exception:
+            logger.warning(
+                "Momo API request failed: %s %s", method, endpoint, exc_info=True
+            )
+            return None
+
+        if not body:
+            return {}
+        try:
+            return json.loads(body)
+        except Exception:
+            logger.warning(
+                "Failed to decode Momo response for %s %s",
+                method,
+                endpoint,
+                exc_info=True,
+            )
+            return None
+
+    def add_memory(
+        self,
+        content: str,
+        container_tag: str,
+        *,
+        memory_type: str,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "content": content.strip(),
+            "containerTag": container_tag,
+            "memoryType": memory_type,
+        }
+        if metadata:
+            payload["metadata"] = metadata
+        return _extract_data(self._request("POST", "/api/v1/memories", payload))
+
+    def forget_memory(self, memory_id: str) -> dict[str, Any]:
+        return _extract_data(self._request("DELETE", f"/api/v1/memories/{memory_id}"))
+
+    def forget_by_query(self, query: str, container_tag: str) -> dict[str, Any]:
+        payload = {
+            "content": query,
+            "containerTag": container_tag,
+        }
+        return _extract_data(self._request("POST", "/api/v1/memories:forget", payload))
+
+    def search_memories(
+        self, query: str, container_tag: str, *, limit: int
+    ) -> list[dict[str, Any]]:
+        payload = {
+            "q": query,
+            "scope": "memories",
+            "containerTags": [container_tag],
+            "limit": limit,
+        }
+        data = _extract_data(self._request("POST", "/api/v1/search", payload))
+        raw_results = data.get("results", []) if isinstance(data, dict) else []
+        results: list[dict[str, Any]] = []
+        for item in raw_results:
+            if not isinstance(item, dict) or item.get("type") != "memory":
+                continue
+            results.append(
+                {
+                    "id": item.get("memoryId", ""),
+                    "content": item.get("content") or "",
+                    "similarity": item.get("similarity"),
+                    "updated_at": item.get("updatedAt") or "",
+                    "metadata": item.get("metadata")
+                    if isinstance(item.get("metadata"), dict)
+                    else {},
+                }
+            )
+        return results
+
+    def get_profile(
+        self, container_tag: str, *, query: Optional[str] = None
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "containerTag": container_tag,
+            "generateNarrative": True,
+        }
+        if query:
+            payload["q"] = query
+        return _extract_data(self._request("POST", "/api/v1/profile:compute", payload))
+
+
+STORE_SCHEMA = {
+    "name": "momo_store",
+    "description": "Store an explicit memory in Momo for future recall.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "string",
+                "description": "The memory content to store.",
+            },
+            "type": {
+                "type": "string",
+                "description": "Optional memory type.",
+                "enum": ["fact", "preference", "episode"],
+            },
+            "metadata": {
+                "type": "object",
+                "description": "Optional metadata attached to the memory.",
+            },
+        },
+        "required": ["content"],
+    },
+}
+
+SEARCH_SCHEMA = {
+    "name": "momo_search",
+    "description": "Search Momo long-term memory by semantic similarity.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "What to search for."},
+            "limit": {
+                "type": "integer",
+                "description": "Maximum results to return, 1 to 20.",
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+FORGET_SCHEMA = {
+    "name": "momo_forget",
+    "description": "Forget a memory by exact id or by best-match query.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string", "description": "Exact memory id to delete."},
+            "query": {
+                "type": "string",
+                "description": "Query used to find the memory to forget.",
+            },
+        },
+    },
+}
+
+PROFILE_SCHEMA = {
+    "name": "momo_profile",
+    "description": "Retrieve persistent profile facts and recent context from Momo.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Optional query to focus the profile response.",
+            },
+        },
+    },
+}
+
+
+class MomoMemoryProvider(MemoryProvider):
+    def __init__(self):
+        self._config = _default_config()
+        self._client: Optional[_MomoClient] = None
+        self._base_url = _DEFAULT_BASE_URL
+        self._api_key = ""
+        self._container_tag = _DEFAULT_CONTAINER_TAG
+        self._auto_recall = True
+        self._auto_capture = True
+        self._max_recall_results = _DEFAULT_MAX_RECALL_RESULTS
+        self._profile_frequency = _DEFAULT_PROFILE_FREQUENCY
+        self._api_timeout = _DEFAULT_API_TIMEOUT
+        self._turn_count = 0
+        self._write_enabled = True
+        self._active = False
+        self._sync_thread: Optional[threading.Thread] = None
+        self._write_thread: Optional[threading.Thread] = None
 
     @property
     def name(self) -> str:
-        """Return provider name."""
         return "momo"
 
     def is_available(self) -> bool:
-        """Check if Momo is configured and ready."""
-        return True  # Config is validated on init
-
-    def get_tool_schemas(self) -> List[Dict]:
-        """Return tool schemas for Momo tools."""
-        return self.get_tools()
-
-    def __init__(self):
-        self.config: Dict[str, Any] = {}
-        self.api_key: Optional[str] = None
-        self.container_tag: str = _DEFAULT_CONTAINER_TAG
-        self.turn_count: int = 0
-        self._session_memories: List[Dict] = []
-
-    def initialize(self, session_id: str, **kwargs) -> None:
-        """Initialize the Momo provider."""
-        hermes_home = kwargs.get("hermes_home", "")
-        profile = kwargs.get("agent_identity", "default")
-        self.config = _load_momo_config(hermes_home)
-        self.api_key = self.config.get("api_key")
-        self.container_tag = self.config.get("container_tag", _DEFAULT_CONTAINER_TAG)
-
-        # Resolve {identity} template in container tag
-        if "{identity}" in self.container_tag:
-            identity = profile if profile != "default" else "default"
-            self.container_tag = self.container_tag.replace("{identity}", identity)
-
-        logger.info(
-            "Momo initialized: url=%s container=%s recall=%s capture=%s",
-            self.config.get("base_url"),
-            self.container_tag,
-            self.config.get("auto_recall"),
-            self.config.get("auto_capture"),
+        hermes_home = os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))
+        config_path = Path(hermes_home) / "momo.json"
+        return bool(
+            os.getenv("MOMO_BASE_URL")
+            or os.getenv("MOMO_API_KEY")
+            or os.getenv("MOMO_CONTAINER_TAG")
+            or config_path.exists()
         )
-    
-    def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        data: Optional[Dict] = None,
-        timeout: Optional[float] = None,
-    ) -> Optional[Dict]:
-        """Make HTTP request to Momo API."""
-        base_url = self.config.get("base_url", _DEFAULT_BASE_URL).rstrip("/")
-        url = f"{base_url}{endpoint}"
-        
-        timeout = timeout or self.config.get("api_timeout", _DEFAULT_API_TIMEOUT)
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode("utf-8") if data else None,
-                headers=headers,
-                method=method,
-            )
-            
-            with urllib.request.urlopen(req, timeout=timeout) as response:
-                response_data = response.read().decode("utf-8")
-                if response_data:
-                    return json.loads(response_data)
-                return {}
-                
-        except urllib.error.HTTPError as e:
-            logger.error("Momo API error: %s %s - %s", method, endpoint, e.code)
-            try:
-                error_body = e.read().decode("utf-8")
-                logger.error("Error response: %s", error_body)
-            except Exception:
-                pass
-            return None
-        except Exception as e:
-            logger.error("Momo request failed: %s %s - %s", method, endpoint, e)
-            return None
-    
-    def get_prefetch_context(self, message: str) -> str:
-        """Get context to inject before the agent turn (auto-recall)."""
-        if not self.config.get("auto_recall", True):
-            return ""
-        
-        self.turn_count += 1
-        
-        try:
-            # Get user profile on first turn and every profile_frequency turns
-            include_profile = (
-                self.turn_count == 1 or
-                self.turn_count % self.config.get("profile_frequency", _DEFAULT_PROFILE_FREQUENCY) == 0
-            )
-            
-            profile_data = ""
-            if include_profile:
-                profile = self._fetch_profile()
-                if profile:
-                    profile_data = self._format_profile(profile)
-            
-            # Search for relevant memories
-            search_results = self._search_memories(message)
-            
-            if not profile_data and not search_results:
-                return ""
-            
-            context_parts = []
-            if profile_data:
-                context_parts.append(profile_data)
-            if search_results:
-                context_parts.append(search_results)
-            
-            context_body = '\n\n'.join(context_parts)
-            return f"<momo-context>\n{context_body}\n</momo-context>\n\n"
-            
-        except Exception as e:
-            logger.error("Failed to fetch Momo context: %s", e)
-            return ""
 
-    def prefetch(self, query: str, *, session_id: str = "") -> str:
-        """Recall relevant context for the upcoming turn (implements MemoryProvider interface)."""
-        context_parts = []
-        
-        # Get memories if auto-recall is enabled
-        if self.config.get("auto_recall", True):
-            memory_context = self.get_prefetch_context(query)
-            if memory_context:
-                context_parts.append(memory_context)
-        
-        # Detect intent and inject tool hints
-        intent_hint = self._detect_intent(query)
-        if intent_hint:
-            context_parts.append(f"<momo-hint>\n{intent_hint}\n</momo-hint>")
-        
-        return "\n\n".join(context_parts) if context_parts else ""
-
-    def _fetch_profile(self) -> Optional[Dict]:
-        """Fetch user profile from Momo."""
-        data = {
-            "containerTag": self.container_tag,
-            "generateNarrative": True,
-        }
-        result = self._make_request("POST", "/api/v1/profile:compute", data)
-        return result.get("data") if result else None
-    
-    def _format_profile(self, profile: Dict) -> str:
-        """Format profile data for context injection."""
-        lines = ["## Your Profile"]
-        
-        # Add narrative if available
-        narrative = profile.get("narrative", "")
-        if narrative:
-            lines.append(f"\n{narrative}")
-        
-        # Add static facts
-        facts = profile.get("staticFacts", [])
-        if facts:
-            lines.append("\n**Key Facts:**")
-            for fact in facts[:10]:  # Limit to 10 facts
-                content = fact.get("content", "") if isinstance(fact, dict) else str(fact)
-                if content:
-                    lines.append(f"- {content}")
-        
-        # Add dynamic facts
-        dynamic = profile.get("dynamicFacts", [])
-        if dynamic:
-            lines.append("\n**Recent Activity:**")
-            for fact in dynamic[:5]:  # Limit to 5 recent
-                content = fact.get("content", "") if isinstance(fact, dict) else str(fact)
-                if content:
-                    lines.append(f"- {content}")
-        
-        return "\n".join(lines)
-    
-    def _search_memories(self, query: str) -> str:
-        """Search memories and format results."""
-        data = {
-            "q": query,
-            "containerTags": [self.container_tag],
-            "scope": "memories",
-            "limit": self.config.get("max_recall_results", _DEFAULT_MAX_RECALL_RESULTS),
-        }
-        
-        result = self._make_request("POST", "/api/v1/search", data)
-        if not result:
-            return ""
-        
-        # Extract results from response envelope
-        results_data = result.get("data", {}) if isinstance(result, dict) else {}
-        results = results_data.get("results", []) if isinstance(results_data, dict) else []
-        
-        if not results:
-            return ""
-        
-        lines = ["## Relevant Memories"]
-        for item in results:
-            if isinstance(item, dict):
-                content = item.get("content", "")
-                result_type = item.get("type", "memory")
-                
-                if content:
-                    lines.append(f"- [{result_type}] {content}")
-        
-        return "\n".join(lines) if len(lines) > 1 else ""
-    
-    def _detect_intent(self, message: str) -> Optional[str]:
-        """Detect user intent and return tool hint to inject."""
-        msg_lower = message.lower().strip()
-        
-        # Store intentions - very broad matching
-        # Single keywords or short phrases that suggest saving
-        store_keywords = [
-            r"\bremember\b",           # just "remember" anywhere
-            r"\bdon't forget\b",
-            r"\bkeep in mind\b",
-            r"\bnote (that|this)\b",
-            r"\bimportant\b",
-            r"\bremind me\b",
-            r"\bsave (this|that|it)\b",
-            r"\bstore (this|that|it)\b",
-            r"\bwrite (this|that) down\b",
-            r"\bmake a note\b",
-            r"\bfor future reference\b",
-        ]
-        for pattern in store_keywords:
-            if re.search(pattern, msg_lower):
-                return "💡 The user might want you to remember something. Consider using `momo_store` to save a memory."
-        
-        # Search intentions - single words or phrases suggesting recall
-        search_keywords = [
-            r"\bdid (i|we) (ever |already )?(say|tell|mention|discuss|talk about)",
-            r"\bwhat (did|was|do) (i|we)\b",
-            r"\bremind me\b",
-            r"\bdo you remember\b",
-            r"\bhave (i|we) (ever )?(mentioned|told|said|talked about)",
-            r"\bwhat do you know\b",
-            r"\btell me about\b",
-            r"\blook up\b",
-            r"\bfind (that|the|my|our|previous|earlier)\b",
-            r"\bsearch (for|my|our)\b",
-            r"\b(recall|recollect|retrieve)\b",  # explicit recall words
-            r"\b(what|when|where|how) (was|did) (that|it)\b",
-            r"\bthe other day\b",
-            r"\bwe (talked|discussed) about\b",
-        ]
-        for pattern in search_keywords:
-            if re.search(pattern, msg_lower):
-                return "💡 The user might be asking about past information. Consider using `momo_search` to find relevant memories."
-        
-        # Profile intentions - single words or phrases suggesting profile view
-        profile_keywords = [
-            r"\bwhat do you know about me\b",
-            r"\bshow me my profile\b",
-            r"\b(show|view|get) (my |the )?profile\b",
-            r"\bwhat have you learned( about me)?\b",
-            r"\bsummarize what you know\b",
-            r"\bwhat('s| is) my (user )?profile\b",
-            r"\btell me what you know about me\b",
-            r"\bmy (user )?profile\b",
-            r"\bwhat (info|information) do you have\b",
-        ]
-        for pattern in profile_keywords:
-            if re.search(pattern, msg_lower):
-                return "💡 The user might want to see their profile. Consider using `momo_profile` to show what you know."
-        
-        return None
-
-    def write_turn(self, user_message: str, assistant_message: str) -> None:
-        """No-op: We use explicit storage only."""
-        pass
-    
-    def flush(self) -> None:
-        """Flush any pending writes. Momo API is synchronous, so no-op."""
-        pass
-
-    def get_tools(self) -> List[Dict]:
-        """Return tool schemas for Momo tools (legacy compat)."""
+    def get_config_schema(self) -> List[Dict[str, Any]]:
         return [
             {
-                "type": "function",
-                "function": {
-                    "name": "momo_search",
-                    "description": "Search your Momo memory for relevant information",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Search query for memories",
-                            },
-                            "limit": {
-                                "type": "integer",
-                                "description": "Maximum number of results (1-20)",
-                                "minimum": 1,
-                                "maximum": 20,
-                                "default": 10,
-                            },
-                        },
-                        "required": ["query"],
-                    },
-                },
+                "key": "base_url",
+                "description": "Momo base URL",
+                "default": _DEFAULT_BASE_URL,
             },
             {
-                "type": "function",
-                "function": {
-                    "name": "momo_store",
-                    "description": "Store a new memory in Momo",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "content": {
-                                "type": "string",
-                                "description": "The memory content to store",
-                            },
-                            "type": {
-                                "type": "string",
-                                "description": "Type of memory (fact, preference, episode)",
-                                "enum": ["fact", "preference", "episode"],
-                                "default": "fact",
-                            },
-                        },
-                        "required": ["content"],
-                    },
-                },
+                "key": "api_key",
+                "description": "Momo API key",
+                "secret": True,
+                "env_var": "MOMO_API_KEY",
             },
             {
-                "type": "function",
-                "function": {
-                    "name": "momo_forget",
-                    "description": "Delete a memory from Momo by ID",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "memory_id": {
-                                "type": "string",
-                                "description": "The ID of the memory to delete",
-                            },
-                        },
-                        "required": ["memory_id"],
-                    },
-                },
+                "key": "container_tag",
+                "description": "Primary Momo container tag",
+                "default": "hermes-{identity}",
             },
             {
-                "type": "function",
-                "function": {
-                    "name": "momo_profile",
-                    "description": "View your Momo memory profile",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                    },
-                },
+                "key": "auto_recall",
+                "description": "Inject memory context before turns",
+                "default": True,
+            },
+            {
+                "key": "auto_capture",
+                "description": "Store conversation turns as episode memories",
+                "default": True,
             },
         ]
-    
-    def handle_tool_call(self, name: str, arguments: Dict) -> str:
-        """Handle Momo tool calls."""
+
+    def save_config(self, values: Dict[str, Any], hermes_home: str) -> None:
+        sanitized = dict(values or {})
+        if "container_tag" in sanitized:
+            raw_tag = str(sanitized["container_tag"] or "").strip()
+            sanitized["container_tag"] = raw_tag or _DEFAULT_CONTAINER_TAG
+        _save_momo_config(sanitized, hermes_home)
+
+    def initialize(self, session_id: str, **kwargs) -> None:
+        hermes_home = kwargs.get("hermes_home") or os.environ.get(
+            "HERMES_HOME", os.path.expanduser("~/.hermes")
+        )
+        self._config = _load_momo_config(str(hermes_home))
+        self._base_url = (
+            str(self._config.get("base_url", _DEFAULT_BASE_URL)).strip()
+            or _DEFAULT_BASE_URL
+        )
+        self._api_key = str(self._config.get("api_key", "") or "")
+
+        raw_tag = (
+            str(self._config.get("container_tag", _DEFAULT_CONTAINER_TAG)).strip()
+            or _DEFAULT_CONTAINER_TAG
+        )
+        identity = kwargs.get("agent_identity", "default") or "default"
+        self._container_tag = _sanitize_tag(raw_tag.replace("{identity}", identity))
+
+        self._auto_recall = bool(self._config["auto_recall"])
+        self._auto_capture = bool(self._config["auto_capture"])
+        self._max_recall_results = int(self._config["max_recall_results"])
+        self._profile_frequency = int(self._config["profile_frequency"])
+        self._api_timeout = float(self._config["api_timeout"])
+        self._turn_count = 0
+
+        agent_context = kwargs.get("agent_context", "")
+        self._write_enabled = agent_context not in ("cron", "flush", "subagent")
+        self._active = bool(self._base_url)
+        self._client = (
+            _MomoClient(self._base_url, self._api_timeout, api_key=self._api_key)
+            if self._active
+            else None
+        )
+
+    def on_turn_start(self, turn_number: int, message: str, **kwargs) -> None:
+        self._turn_count = max(turn_number, 0)
+
+    def system_prompt_block(self) -> str:
+        if not self._active:
+            return ""
+        return "\n".join(
+            [
+                "# Momo",
+                f"Active. Container: {self._container_tag}.",
+                "Use momo_search, momo_store, momo_forget, and momo_profile for explicit memory operations.",
+            ]
+        )
+
+    def prefetch(self, query: str, *, session_id: str = "") -> str:
+        if (
+            not self._active
+            or not self._auto_recall
+            or not self._client
+            or not query.strip()
+        ):
+            return ""
         try:
-            if name == "momo_search":
-                return self._tool_search(arguments)
-            elif name == "momo_store":
-                return self._tool_store(arguments)
-            elif name == "momo_forget":
-                return self._tool_forget(arguments)
-            elif name == "momo_profile":
-                return self._tool_profile()
-            else:
-                return tool_error(f"Unknown tool: {name}")
-        except Exception as e:
-            logger.error("Momo tool error: %s - %s", name, e)
-            return tool_error(f"Tool failed: {e}")
-    
-    def _tool_search(self, arguments: Dict) -> str:
-        """Handle momo_search tool."""
-        query = arguments.get("query", "").strip()
-        if not query:
-            return tool_error("Query is required")
-        
-        limit = max(1, min(20, int(arguments.get("limit", 10))))
-        
-        data = {
-            "q": query,
-            "containerTags": [self.container_tag],
-            "scope": "memories",
-            "limit": limit,
-        }
-        
-        result = self._make_request("POST", "/api/v1/search", data)
-        
-        if result is None:
-            return "Failed to search memories. Check if Momo server is running."
-        
-        # Extract results from response envelope
-        results_data = result.get("data", {}) if isinstance(result, dict) else {}
-        results = results_data.get("results", []) if isinstance(results_data, dict) else []
-        
-        if not results:
-            return f"No memories found for: {query}"
-        
-        lines = [f"Found {len(results)} result(s) for '{query}':\n"]
-        for item in results:
-            if isinstance(item, dict):
-                content = item.get("content", "")
-                result_type = item.get("type", "memory")
-                memory_id = item.get("memoryId", item.get("documentId", "unknown"))
-                
+            profile = self._client.get_profile(self._container_tag, query=query[:200])
+            include_profile = self._turn_count <= 1 or (
+                self._turn_count % self._profile_frequency == 0
+            )
+            search_results = self._client.search_memories(
+                query,
+                self._container_tag,
+                limit=self._max_recall_results,
+            )
+        except Exception:
+            logger.debug("Momo prefetch failed", exc_info=True)
+            return ""
+
+        sections = []
+        if include_profile:
+            narrative = str(profile.get("narrative") or "").strip()
+            if narrative:
+                sections.append(f"## Profile Summary\n{narrative}")
+
+            static_lines = []
+            for item in profile.get("staticFacts") or []:
+                content = item.get("content") if isinstance(item, dict) else str(item)
                 if content:
-                    lines.append(f"[{result_type}] {content}")
-                    lines.append(f"  ID: {memory_id}\n")
-        
-        return "\n".join(lines)
-    
-    def _tool_store(self, arguments: Dict) -> str:
-        """Handle momo_store tool."""
-        content = arguments.get("content", "").strip()
+                    static_lines.append(f"- {content}")
+            if static_lines:
+                sections.append(
+                    "## User Profile (Persistent)\n"
+                    + "\n".join(static_lines[: self._max_recall_results])
+                )
+
+            dynamic_lines = []
+            for item in profile.get("dynamicFacts") or []:
+                content = item.get("content") if isinstance(item, dict) else str(item)
+                if content:
+                    dynamic_lines.append(f"- {content}")
+            if dynamic_lines:
+                sections.append(
+                    "## Recent Context\n"
+                    + "\n".join(dynamic_lines[: self._max_recall_results])
+                )
+
+        memory_lines = []
+        for item in search_results[: self._max_recall_results]:
+            content = str(item.get("content") or "").strip()
+            if not content:
+                continue
+            prefix_bits = []
+            updated = _format_relative_time(str(item.get("updated_at") or ""))
+            if updated:
+                prefix_bits.append(f"[{updated}]")
+            similarity = item.get("similarity")
+            if similarity is not None:
+                try:
+                    prefix_bits.append(f"[{round(float(similarity) * 100)}%]")
+                except Exception:
+                    pass
+            prefix = " ".join(prefix_bits)
+            memory_lines.append(f"- {prefix} {content}".strip())
+        if memory_lines:
+            sections.append("## Relevant Memories\n" + "\n".join(memory_lines))
+
+        if not sections:
+            return ""
+
+        intro = (
+            "The following is background context from long-term memory. Use it silently when relevant. "
+            "Do not force memories into the conversation."
+        )
+        return (
+            f"<momo-context>\n{intro}\n\n" + "\n\n".join(sections) + "\n</momo-context>"
+        )
+
+    def sync_turn(
+        self, user_content: str, assistant_content: str, *, session_id: str = ""
+    ) -> None:
+        if (
+            not self._active
+            or not self._auto_capture
+            or not self._write_enabled
+            or not self._client
+        ):
+            return
+
+        clean_user = _clean_text_for_capture(user_content)
+        clean_assistant = _clean_text_for_capture(assistant_content)
+        if not clean_user or not clean_assistant:
+            return
+        if (
+            len(clean_user) < _MIN_CAPTURE_LENGTH
+            or len(clean_assistant) < _MIN_CAPTURE_LENGTH
+        ):
+            return
+        if _is_trivial_message(clean_user):
+            return
+
+        content = (
+            f"[role: user]\n{clean_user}\n[user:end]\n\n"
+            f"[role: assistant]\n{clean_assistant}\n[assistant:end]"
+        )
+        metadata = {"source": "hermes", "type": "conversation_turn"}
+
+        def _run() -> None:
+            try:
+                self._client.add_memory(
+                    content,
+                    self._container_tag,
+                    memory_type="episode",
+                    metadata=metadata,
+                )
+            except Exception:
+                logger.debug("Momo sync_turn failed", exc_info=True)
+
+        if self._sync_thread and self._sync_thread.is_alive():
+            self._sync_thread.join(timeout=2.0)
+        self._sync_thread = threading.Thread(target=_run, daemon=True, name="momo-sync")
+        self._sync_thread.start()
+
+    def on_memory_write(self, action: str, target: str, content: str) -> None:
+        if not self._active or not self._write_enabled or not self._client:
+            return
+        if action != "add" or not (content or "").strip():
+            return
+
+        def _run() -> None:
+            try:
+                self._client.add_memory(
+                    content.strip(),
+                    self._container_tag,
+                    memory_type="fact",
+                    metadata={
+                        "source": "hermes_memory",
+                        "target": target,
+                        "type": "explicit_memory",
+                    },
+                )
+            except Exception:
+                logger.debug("Momo on_memory_write failed", exc_info=True)
+
+        if self._write_thread and self._write_thread.is_alive():
+            self._write_thread.join(timeout=2.0)
+        self._write_thread = threading.Thread(
+            target=_run, daemon=False, name="momo-memory-write"
+        )
+        self._write_thread.start()
+
+    def shutdown(self) -> None:
+        for attr_name in ("_sync_thread", "_write_thread"):
+            thread = getattr(self, attr_name, None)
+            if thread and thread.is_alive():
+                thread.join(timeout=5.0)
+            setattr(self, attr_name, None)
+
+    def get_tool_schemas(self) -> List[Dict[str, Any]]:
+        return [STORE_SCHEMA, SEARCH_SCHEMA, FORGET_SCHEMA, PROFILE_SCHEMA]
+
+    def _tool_store(self, args: Dict[str, Any]) -> str:
+        content = str(args.get("content") or "").strip()
         if not content:
-            return tool_error("Content is required")
-        
-        memory_type = arguments.get("type", "fact")
+            return tool_error("content is required")
+        memory_type = (
+            str(args.get("type") or _detect_memory_type(content)).strip().lower()
+        )
         if memory_type not in ("fact", "preference", "episode"):
-            memory_type = "fact"
-        
-        data = {
-            "content": content,
-            "containerTag": self.container_tag,
-            "memoryType": memory_type,
-            "metadata": {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "source": "hermes_agent_tool",
-            },
-        }
-        
-        result = self._make_request("POST", "/api/v1/memories", data)
-        
-        if result is None:
-            return "Failed to store memory. Check if Momo server is running."
-        
-        # Extract from response envelope
-        result_data = result.get("data", {}) if isinstance(result, dict) else {}
-        memory_id = result_data.get("memoryId", "unknown") if isinstance(result_data, dict) else "unknown"
-        return f"Memory stored successfully. ID: {memory_id}"
-    
-    def _tool_forget(self, arguments: Dict) -> str:
-        """Handle momo_forget tool."""
-        memory_id = arguments.get("memory_id", "").strip()
-        if not memory_id:
-            return tool_error("Memory ID is required")
-        
-        endpoint = f"/api/v1/memories/{memory_id}"
-        result = self._make_request("DELETE", endpoint)
-        
-        if result is None:
-            return f"Failed to delete memory {memory_id}. It may not exist."
-        
-        return f"Memory {memory_id} deleted successfully."
-    
-    def _tool_profile(self) -> str:
-        """Handle momo_profile tool."""
-        profile = self._fetch_profile()
-        
-        if profile is None:
-            return "Failed to fetch profile. Check if Momo server is running."
-        
-        lines = ["# Your Momo Profile\n"]
-        
-        # Narrative summary
-        narrative = profile.get("narrative", "")
+            memory_type = _detect_memory_type(content)
+        metadata = args.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata.setdefault("source", "hermes_tool")
+        metadata.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+        try:
+            result = self._client.add_memory(
+                content,
+                self._container_tag,
+                memory_type=memory_type,
+                metadata=metadata,
+            )
+        except Exception as exc:
+            return tool_error(f"Failed to store memory: {exc}")
+
+        preview = content[:80] + ("..." if len(content) > 80 else "")
+        return json.dumps(
+            {
+                "saved": True,
+                "id": result.get("memoryId", ""),
+                "type": memory_type,
+                "preview": preview,
+                "container_tag": self._container_tag,
+            }
+        )
+
+    def _tool_search(self, args: Dict[str, Any]) -> str:
+        query = str(args.get("query") or "").strip()
+        if not query:
+            return tool_error("query is required")
+        try:
+            limit = max(1, min(20, int(args.get("limit", 5) or 5)))
+        except Exception:
+            limit = 5
+        try:
+            results = self._client.search_memories(
+                query, self._container_tag, limit=limit
+            )
+        except Exception as exc:
+            return tool_error(f"Search failed: {exc}")
+
+        formatted = []
+        for item in results:
+            entry: dict[str, Any] = {
+                "id": item.get("id", ""),
+                "content": item.get("content", ""),
+            }
+            if item.get("similarity") is not None:
+                try:
+                    entry["similarity"] = round(float(item["similarity"]) * 100)
+                except Exception:
+                    pass
+            if item.get("updated_at"):
+                entry["updated_at"] = item["updated_at"]
+            formatted.append(entry)
+        return json.dumps(
+            {
+                "results": formatted,
+                "count": len(formatted),
+                "container_tag": self._container_tag,
+            }
+        )
+
+    def _tool_forget(self, args: Dict[str, Any]) -> str:
+        memory_id = str(args.get("id") or "").strip()
+        query = str(args.get("query") or "").strip()
+        if not memory_id and not query:
+            return tool_error("Provide either id or query")
+        try:
+            if memory_id:
+                result = self._client.forget_memory(memory_id)
+                return json.dumps(
+                    {
+                        "forgotten": bool(result.get("forgotten", True)),
+                        "id": result.get("memoryId", memory_id),
+                    }
+                )
+
+            result = self._client.forget_by_query(query, self._container_tag)
+            response = {
+                "forgotten": bool(result.get("forgotten", False)),
+                "id": result.get("memoryId", ""),
+                "query": query,
+            }
+            return json.dumps(response)
+        except Exception as exc:
+            return tool_error(f"Forget failed: {exc}")
+
+    def _tool_profile(self, args: Dict[str, Any]) -> str:
+        query = str(args.get("query") or "").strip() or None
+        try:
+            profile = self._client.get_profile(self._container_tag, query=query)
+        except Exception as exc:
+            return tool_error(f"Profile failed: {exc}")
+
+        narrative = str(profile.get("narrative") or "").strip()
+        static_facts = [
+            item.get("content")
+            for item in profile.get("staticFacts") or []
+            if isinstance(item, dict) and item.get("content")
+        ]
+        dynamic_facts = [
+            item.get("content")
+            for item in profile.get("dynamicFacts") or []
+            if isinstance(item, dict) and item.get("content")
+        ]
+        sections = []
         if narrative:
-            lines.append(f"*{narrative}*\n")
-        
-        # Static facts
-        facts = profile.get("staticFacts", [])
-        if facts:
-            lines.append("## Key Facts")
-            for fact in facts:
-                content = fact.get("content", "") if isinstance(fact, dict) else str(fact)
-                if content:
-                    lines.append(f"- {content}")
-            lines.append("")
-        
-        # Dynamic facts
-        dynamic = profile.get("dynamicFacts", [])
-        if dynamic:
-            lines.append("## Recent Activity")
-            for fact in dynamic:
-                content = fact.get("content", "") if isinstance(fact, dict) else str(fact)
-                if content:
-                    lines.append(f"- {content}")
-            lines.append("")
-        
-        # Container info
-        total = profile.get("totalMemories", 0)
-        lines.append(f"**Container:** {self.container_tag}")
-        lines.append(f"**Total Memories:** {total}")
-        lines.append(f"**Server:** {self.config.get('base_url')}")
-        
-        return "\n".join(lines)
+            sections.append(f"## Profile Summary\n{narrative}")
+        if static_facts:
+            sections.append(
+                "## User Profile (Persistent)\n"
+                + "\n".join(f"- {item}" for item in static_facts)
+            )
+        if dynamic_facts:
+            sections.append(
+                "## Recent Context\n" + "\n".join(f"- {item}" for item in dynamic_facts)
+            )
+        return json.dumps(
+            {
+                "profile": "\n\n".join(sections),
+                "narrative": narrative,
+                "static_facts": static_facts,
+                "dynamic_facts": dynamic_facts,
+                "static_count": len(static_facts),
+                "dynamic_count": len(dynamic_facts),
+                "total_memories": profile.get("totalMemories", 0),
+                "container_tag": profile.get("containerTag", self._container_tag),
+            }
+        )
+
+    def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
+        if not self._active or not self._client:
+            return tool_error("Momo is not configured")
+        if tool_name == "momo_store":
+            return self._tool_store(args)
+        if tool_name == "momo_search":
+            return self._tool_search(args)
+        if tool_name == "momo_forget":
+            return self._tool_forget(args)
+        if tool_name == "momo_profile":
+            return self._tool_profile(args)
+        return tool_error(f"Unknown tool: {tool_name}")
 
 
+def register(ctx):
+    ctx.register_memory_provider(MomoMemoryProvider())

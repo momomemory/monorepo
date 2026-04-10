@@ -111,7 +111,8 @@ Remember that I prefer TypeScript over JavaScript
 
 Parameters:
 - `content` (required): Memory content
-- `type` (optional): `fact`, `preference`, or `episode` (default: `fact`)
+- `type` (optional): `fact`, `preference`, or `episode` (auto-detected when omitted)
+- `metadata` (optional): Extra structured metadata to attach to the memory
 
 ### `momo_forget`
 
@@ -122,7 +123,8 @@ Forget memory mem_abc123
 ```
 
 Parameters:
-- `memory_id` (required): ID of memory to delete
+- `id` (optional): Exact memory ID to delete
+- `query` (optional): Best-match query to find and forget a memory
 
 ### `momo_profile`
 
@@ -152,8 +154,12 @@ The full profile is injected on the first turn and every `profile_frequency` tur
 After each successful agent turn, if `auto_capture` is enabled:
 
 1. Strips previously injected context blocks
-2. Stores the user/assistant exchange as an `episode` memory
+2. Stores the cleaned user/assistant exchange as an `episode` memory
 3. Skips trivial messages ("ok", "thanks", etc.)
+
+### Built-In Memory Mirroring
+
+When Hermes writes to its built-in memory store, Momo mirrors `add` operations as `fact` memories so explicit user facts persist in both systems.
 
 ## Profile-Scoped Containers
 
