@@ -2,7 +2,7 @@
 
 Hermes Agent integration for Momo — a self-hostable AI memory system written in Rust.
 
-> This plugin is part of the [Momo monorepo](https://github.com/momomemory/momo). For the latest version, see `plugins/hermes/`.
+> This plugin is part of the [Momo monorepo](https://github.com/momomemory/momo). For the latest version, see `plugins/hermes-momo/`.
 
 ## Features
 
@@ -31,7 +31,7 @@ hermes memory setup    # select "momo"
 Copy this directory to your Hermes Agent plugins:
 
 ```bash
-cp -r plugins/hermes ~/.hermes/hermes-agent/plugins/memory/momo
+cp -r plugins/hermes-momo ~/.hermes/hermes-agent/plugins/memory/momo
 ```
 
 ### Manual Setup
