@@ -240,11 +240,11 @@ subrepo-clean name:
 # ─── SDK Development ────────────────────────────────────────────────────────
 
 # Build all SDKs
-build-sdks: sdk-ts-build
+build-sdks: sdk-ts-build sdk-py-build
     @echo "All SDK builds complete."
 
 # Test all SDKs
-test-sdks: sdk-ts-test
+test-sdks: sdk-ts-test sdk-py-test
     @echo "All SDK tests complete."
 
 # ─── TypeScript SDK helpers ─────────────────────────────────────────────────
@@ -297,6 +297,106 @@ sdk-ts-build:
 # Run TypeScript SDK tests
 sdk-ts-test:
     cd sdks/typescript && bun test
+
+# ─── Python SDK helpers ─────────────────────────────────────────────────────
+
+# Generate Python SDK OpenAPI spec from live server (mirrors sdk-ts-codegen)
+sdk-py-codegen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Build the server
+    cd momo && cargo build
+
+    # Start server on dedicated port
+    MOMO_HOST=127.0.0.1 MOMO_PORT=3100 MOMO_API_KEYS=test-key \
+      ./momo/target/debug/momo &
+    SERVER_PID=$!
+
+    # Ensure cleanup on exit
+    trap "kill $SERVER_PID 2>/dev/null || true; wait $SERVER_PID 2>/dev/null || true" EXIT
+
+    # Wait for server to be ready (max 30s)
+    echo "Waiting for server..."
+    for i in $(seq 1 30); do
+      if curl -sSf http://127.0.0.1:3100/api/v1/health > /dev/null 2>&1; then
+        echo "Server ready."
+        break
+      fi
+      if [ "$i" -eq 30 ]; then
+        echo "ERROR: Server did not start within 30s"
+        exit 1
+      fi
+      sleep 1
+    done
+
+    # Fetch OpenAPI spec (shared with TypeScript SDK)
+    mkdir -p sdks/python/openapi
+    curl -sSf http://127.0.0.1:3100/api/v1/openapi.json -o sdks/python/openapi/openapi.json
+    echo "OpenAPI spec saved to sdks/python/openapi/openapi.json"
+
+
+# Install Python SDK dependencies via uv
+sdk-py-install:
+    cd sdks/python && uv sync --all-extras
+
+
+# Build Python SDK (wheel + sdist)
+sdk-py-build:
+    cd sdks/python && uv build
+
+
+# Run Python SDK tests
+sdk-py-test:
+    cd sdks/python && uv run pytest tests/ -v
+
+
+# Run Python SDK linter
+sdk-py-lint:
+    cd sdks/python && uv run ruff check src/ tests/
+
+
+# Run Python SDK formatter
+sdk-py-fmt:
+    cd sdks/python && uv run ruff format src/ tests/
+
+
+# Run Python SDK type checker
+sdk-py-typecheck:
+    cd sdks/python && uv run mypy src/
+
+
+# Release the Python SDK to the mirror and create a tag on the mirror repo.
+# Usage: just release-sdk-py 0.1.0
+release-sdk-py version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    VERSION="{{ version }}"
+    echo "Bumping sdks/python/pyproject.toml to $VERSION"
+    cd sdks/python
+
+    # Bump version in pyproject.toml
+    sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml && rm -f pyproject.toml.bak
+    # Also bump __version__ in the package
+    sed -i.bak "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" src/momo_sdk/__init__.py && rm -f src/momo_sdk/__init__.py.bak
+
+    git add pyproject.toml src/momo_sdk/__init__.py
+    git commit -m "chore(sdk-py): bump to $VERSION"
+    git push origin main
+
+    # Push subrepo to its upstream
+    cd ../..
+    echo "Pushing sdks/python subrepo upstream"
+    git subrepo push sdks/python
+    git push origin main
+
+    # Create tag on mirror repo using its latest main commit SHA
+    echo "Creating tag v$VERSION on momomemory/sdk-python mirror repo"
+    SHA=$(gh api repos/momomemory/sdk-python/commits/main --jq '.sha')
+    gh api repos/momomemory/sdk-python/git/refs -X POST -f ref="refs/tags/v${VERSION}" -f sha="$SHA"
+    echo "You can view the mirror actions: https://github.com/momomemory/sdk-python/actions"
+
 
 # Publish all SDKs (currently TypeScript only)
 # NOTE: This wrapper delegates to release-sdk-ts which performs the full
