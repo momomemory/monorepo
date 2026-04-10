@@ -1,0 +1,13 @@
+name: momo
+description: Momo memory integration for Hermes Agent - self-hostable AI memory system with vector search
+type: memory
+version: 1.0.0
+author: Nova (Hermes Agent)
+license: MIT
+requirements:
+  - python >= 3.9
+config_file: momo.json
+env_vars:
+  - MOMO_API_KEY
+  - MOMO_BASE_URL
+  - MOMO_CONTAINER_TAG
