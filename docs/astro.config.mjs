@@ -43,17 +43,25 @@ export default defineConfig({
 						{ label: 'MCP Guide', slug: 'guides/mcp' },
 					],
 				},
-				{
-					label: 'Agent Plugins',
-					items: [
-						{ label: 'Overview', slug: 'guides/plugins' },
-						{ label: 'OpenCode', slug: 'guides/plugins/opencode' },
-						{ label: 'OpenClaw', slug: 'guides/plugins/openclaw' },
-						{ label: 'Pi', slug: 'guides/plugins/pi' },
-					],
-				},
-				{
-					label: 'Reference',
+			{
+				label: 'Agent Plugins',
+				items: [
+					{ label: 'Overview', slug: 'guides/plugins' },
+					{ label: 'OpenCode', slug: 'guides/plugins/opencode' },
+					{ label: 'OpenClaw', slug: 'guides/plugins/openclaw' },
+					{ label: 'Pi', slug: 'guides/plugins/pi' },
+				],
+			},
+			{
+				label: 'SDKs',
+				items: [
+					{ label: 'Overview', slug: 'sdks' },
+					{ label: 'TypeScript', slug: 'sdks/typescript' },
+					{ label: 'Python', slug: 'sdks/python' },
+				],
+			},
+			{
+				label: 'Reference',
 					items: [
 						{ label: 'API Reference', slug: 'reference/api' },
 						{ label: 'Embedded C FFI', slug: 'reference/ffi' },

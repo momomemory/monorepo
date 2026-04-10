@@ -11,7 +11,7 @@ Momo uses a monorepo workflow with git subrepo mirrors:
 
 - **Monorepo** (`momomemory/monorepo`): Contains the entire project history
 - **Server Mirror** (`momomemory/momo`): Core Rust server
-- **SDK Mirror** (`momomemory/sdk-typescript`): TypeScript SDK
+- **SDK Mirrors** (`momomemory/sdk-typescript`, `momomemory/sdk-python`): TypeScript and Python SDKs
 - **Plugin Mirrors** (`momomemory/opencode-momo`, `momomemory/openclaw-momo`, `momomemory/pi-momo`)
 
 Changes are made in the monorepo and pushed to mirrors using `just subrepo-push`.
@@ -34,11 +34,14 @@ This will:
 3. Push to server mirror (`momomemory/momo`)
 4. Create tag `v0.3.1` on the mirror repo
 
-### SDK Release
+### SDK Releases
 
 ```bash
 just release-sdk-ts 0.3.0
+just release-sdk-py 0.2.0
 ```
+
+The TypeScript SDK publishes to npm via OIDC Trusted Publishing. The Python SDK publishes to PyPI via the same mechanism.
 
 ### Plugin Releases
 
@@ -55,7 +58,7 @@ just release-plugin-pi 0.1.3
 Published artifacts are defined by each mirror repository's release workflow.
 
 - Server mirror releases may attach binaries, checksums, and container images.
-- SDK and plugin mirrors publish npm packages from their own release automation.
+- SDK mirrors publish to npm (TypeScript) and PyPI (Python) from their own release automation.
 - Check the mirror repository for the exact artifacts produced by a given release.
 
 ---
@@ -63,7 +66,7 @@ Published artifacts are defined by each mirror repository's release workflow.
 ## Versioning Policy
 
 - Follow [Semantic Versioning 2.0](https://semver.org/).
-- Source of truth: `Cargo.toml` or `package.json` `version` field.
+- Source of truth: `Cargo.toml`, `package.json`, or `pyproject.toml` `version` field.
 - Mirror tags use `v{version}` format (e.g., `v0.3.1`).
 - Pre-release versions (`-alpha`, `-beta`, `-rc.N`) are supported.
 - Docker tag `latest` only updates on stable (non-pre-release) tags.
@@ -77,7 +80,7 @@ Each mirror repo owns its release workflow and is triggered after the `just rele
 1. **Tag created** via `just release-*` command
 2. **Mirror workflow** runs in the target mirror repository
 3. **Artifacts and publishing** are handled by that mirror's CI configuration
-4. **npm publish** for SDKs and plugins is handled in the mirror repo via OIDC Trusted Publishing
+4. **Package publishing** (npm for TypeScript, PyPI for Python) is handled in the mirror repo via OIDC Trusted Publishing
 
 Example for the server:
 ```
