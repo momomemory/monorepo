@@ -41,7 +41,7 @@ async fn setup_test_app(reranker_override: Option<RerankerProvider>) -> (SocketA
     let llm = LlmProvider::new(config.llm.as_ref());
 
     let state = AppState::new(
-        config.clone(),
+        config.clone().into(),
         db_backend.clone(),
         db_backend,
         embeddings,

@@ -52,7 +52,11 @@ fn parse_config(config_json: Option<String>) -> MomoResult<Config> {
 }
 
 #[no_mangle]
-pub extern "C" fn momo_string_free(ptr: *mut c_char) {
+/// # Safety
+///
+/// `ptr` must have been returned by this library from `CString::into_raw` and
+/// must not be freed more than once.
+pub unsafe extern "C" fn momo_string_free(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
@@ -93,7 +97,11 @@ pub extern "C" fn momo_engine_new(
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_free(engine: *mut MomoEngine) {
+/// # Safety
+///
+/// `engine` must be a valid pointer returned by `momo_engine_new` and must not
+/// be freed more than once.
+pub unsafe extern "C" fn momo_engine_free(engine: *mut MomoEngine) {
     if engine.is_null() {
         return;
     }
@@ -104,7 +112,11 @@ pub extern "C" fn momo_engine_free(engine: *mut MomoEngine) {
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_start_workers(
+/// # Safety
+///
+/// `engine` must be a valid, uniquely borrowed pointer returned by
+/// `momo_engine_new` for the duration of this call.
+pub unsafe extern "C" fn momo_engine_start_workers(
     engine: *mut MomoEngine,
     error_out: *mut *mut c_char,
 ) -> bool {
@@ -125,7 +137,11 @@ pub extern "C" fn momo_engine_start_workers(
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_stop_workers(engine: *mut MomoEngine) {
+/// # Safety
+///
+/// `engine` must be a valid, uniquely borrowed pointer returned by
+/// `momo_engine_new` for the duration of this call.
+pub unsafe extern "C" fn momo_engine_stop_workers(engine: *mut MomoEngine) {
     if engine.is_null() {
         return;
     }
@@ -134,7 +150,11 @@ pub extern "C" fn momo_engine_stop_workers(engine: *mut MomoEngine) {
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_create_memory_json(
+/// # Safety
+///
+/// `engine` must be a valid pointer returned by `momo_engine_new`. If
+/// `request_json` is non-null it must point to a valid NUL-terminated C string.
+pub unsafe extern "C" fn momo_engine_create_memory_json(
     engine: *mut MomoEngine,
     request_json: *const c_char,
     error_out: *mut *mut c_char,
@@ -165,7 +185,11 @@ pub extern "C" fn momo_engine_create_memory_json(
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_search_memories_json(
+/// # Safety
+///
+/// `engine` must be a valid pointer returned by `momo_engine_new`. If
+/// `request_json` is non-null it must point to a valid NUL-terminated C string.
+pub unsafe extern "C" fn momo_engine_search_memories_json(
     engine: *mut MomoEngine,
     request_json: *const c_char,
     error_out: *mut *mut c_char,
@@ -196,7 +220,11 @@ pub extern "C" fn momo_engine_search_memories_json(
 }
 
 #[no_mangle]
-pub extern "C" fn momo_engine_search_documents_json(
+/// # Safety
+///
+/// `engine` must be a valid pointer returned by `momo_engine_new`. If
+/// `request_json` is non-null it must point to a valid NUL-terminated C string.
+pub unsafe extern "C" fn momo_engine_search_documents_json(
     engine: *mut MomoEngine,
     request_json: *const c_char,
     error_out: *mut *mut c_char,

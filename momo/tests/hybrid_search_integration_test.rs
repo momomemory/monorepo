@@ -90,7 +90,7 @@ async fn setup_test_app() -> (SocketAddr, TempDir, MockServer) {
     let llm = LlmProvider::new(config.llm.as_ref());
 
     let state = momo::api::AppState::new(
-        config.clone(),
+        config.clone().into(),
         db_backend.clone(),
         db_backend,
         embeddings,
