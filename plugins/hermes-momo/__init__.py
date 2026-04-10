@@ -264,7 +264,7 @@ class _MomoClient:
     ) -> list[dict[str, Any]]:
         payload = {
             "q": query,
-            "scope": "memories",
+            "scope": "hybrid",
             "containerTags": [container_tag],
             "limit": limit,
         }
@@ -272,19 +272,49 @@ class _MomoClient:
         raw_results = data.get("results", []) if isinstance(data, dict) else []
         results: list[dict[str, Any]] = []
         for item in raw_results:
-            if not isinstance(item, dict) or item.get("type") != "memory":
+            if not isinstance(item, dict):
                 continue
-            results.append(
-                {
-                    "id": item.get("memoryId", ""),
-                    "content": item.get("content") or "",
-                    "similarity": item.get("similarity"),
-                    "updated_at": item.get("updatedAt") or "",
-                    "metadata": item.get("metadata")
-                    if isinstance(item.get("metadata"), dict)
-                    else {},
-                }
-            )
+            item_type = item.get("type")
+            if item_type == "memory":
+                # Handle memory results
+                results.append(
+                    {
+                        "id": item.get("memoryId", ""),
+                        "content": item.get("content") or "",
+                        "similarity": item.get("similarity"),
+                        "updated_at": item.get("updatedAt") or "",
+                        "metadata": item.get("metadata")
+                        if isinstance(item.get("metadata"), dict)
+                        else {},
+                    }
+                )
+            elif item_type == "document":
+                # Handle document results
+                content = item.get("content") or ""
+                # For documents, try to get extracted text or chunks
+                if not content and "chunks" in item:
+                    chunks = item.get("chunks", [])
+                    if chunks:
+                        content = "\n\n".join(
+                            c.get("text", c.get("content", ""))
+                            for c in chunks[:3]
+                        )
+                # Build a content preview for documents
+                doc_title = item.get("title") or item.get("filename") or "Document"
+                doc_prefix = f"[Document: {doc_title}]\n"
+                results.append(
+                    {
+                        "id": item.get("documentId", ""),
+                        "content": doc_prefix + content if content else doc_prefix + "[PDF content - see original document]",
+                        "similarity": item.get("similarity"),
+                        "updated_at": item.get("updatedAt") or "",
+                        "metadata": {
+                            **(item.get("metadata") if isinstance(item.get("metadata"), dict) else {}),
+                            "source_type": "document",
+                            "title": doc_title,
+                        },
+                    }
+                )
         return results
 
     def get_profile(
